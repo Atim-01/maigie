@@ -2,7 +2,7 @@
 
 ### *Your personal AI-driven learning assistant*
 
-Maigie is an AI-first study companion that helps students organize learning, generate courses, plan schedules, set goals, track progress, and access personalized resources—all through natural conversations (text + voice).
+Maigie is an AI-first study companion that helps students organize learning, generate courses, plan schedules, set goals, track progress, and access personalized resources—all through natural conver[...] 
 
 This repository is a **monorepo** managed using **Nx**, containing:
 
@@ -54,7 +54,7 @@ This repository is a **monorepo** managed using **Nx**, containing:
 
 # 📦 **Monorepo Structure**
 
-```
+```text
 maigie/
 │
 ├── apps/
@@ -127,7 +127,7 @@ Maigie interprets user messages and maps them to structured actions:
 
 Each AI response includes a JSON `action` block that the client uses to update the UI or trigger backend workflows.
 
-Full spec is in `docs/llm/intent-spec.md`.
+Full spec is in [docs/llm/intent-spec.md](https://github.com/Vcky4/maigie/blob/main/docs/llm/intent-spec.md).
 
 ---
 
@@ -144,7 +144,7 @@ Full spec is in `docs/llm/intent-spec.md`.
 * Mobile offline sync
 
 Full detailed user flows are documented in:
-`/docs/requirements/maigie_prd.md`
+[docs/requirements/maigie_prd.md](https://github.com/Vcky4/maigie/blob/main/docs/requirements/maigie_prd.md)
 
 ---
 
@@ -160,7 +160,7 @@ pnpm install
 
 Create `.env` files in:
 
-```
+```text
 apps/api/.env
 apps/web/.env
 apps/mobile/.env
@@ -205,7 +205,7 @@ Key models:
 * AIActionLog
 
 Full schema in:
-`apps/api/prisma/schema.prisma`
+[apps/api/prisma/schema.prisma](https://github.com/Vcky4/maigie/blob/main/apps/api/prisma/schema.prisma)
 
 ---
 
@@ -253,10 +253,10 @@ nx run mobile:test
 
 # 📚 **Documentation**
 
-* PRD: `/docs/requirements/maigie_prd.md`
-* System architecture: `/docs/architecture/`
-* AI intent routing: `/docs/ai/`
-* API spec: `/docs/api/`
+* PRD: [docs/requirements/maigie_prd.md](https://github.com/Vcky4/maigie/blob/main/docs/requirements/maigie_prd.md)
+* System architecture: [docs/architecture/](https://github.com/Vcky4/maigie/tree/main/docs/architecture)
+* AI intent routing: [docs/ai/](https://github.com/Vcky4/maigie/tree/main/docs/ai)
+* API spec: [docs/api/](https://github.com/Vcky4/maigie/tree/main/docs/api)
 
 ---
 
@@ -275,5 +275,4 @@ nx run mobile:test
 
 Maigie is designed to eventually support open-source contributions.
 
-Follow the contribution guide:
-`/CONTRIBUTING.md`
+Follow the contribution guide: [CONTRIBUTING.md](https://github.com/Vcky4/maigie/blob/main/CONTRIBUTING.md)
