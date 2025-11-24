@@ -33,11 +33,14 @@ from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .core.cache import cache
+from .core.celery_app import celery_app
+from .core.database import db
 
 # --- Import the database helper functions ---
 from src.core.database import connect_db, disconnect_db, check_db_health
 
 from .core.websocket import manager as websocket_manager
+from .workers.manager import check_worker_health
 from .dependencies import SettingsDep
 from .exceptions import (
     AppException,
@@ -372,17 +375,19 @@ def create_app() -> FastAPI:
             "cache": cache_status,
         }
 
-    # Ready check endpoint
+    # Ready check endpoint (includes database, cache, and worker status)
     @app.get("/ready")
     async def ready() -> dict[str, Any]:
         """Readiness check endpoint."""
         db_status = await check_db_health()
         cache_status = await cache.health_check()
+        worker_status = await check_worker_health()
 
         return {
             "status": "ready",
             "database": db_status,
             "cache": cache_status,
+            "workers": worker_status,
         }
 
     # Include routers
