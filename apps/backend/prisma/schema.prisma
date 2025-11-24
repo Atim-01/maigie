@@ -11,32 +11,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- Base Schema ---
-
-enum Tier {
-  FREE
-  PREMIUM_MONTHLY
-  PREMIUM_YEARLY
-}
-
-// User model (from 17-backend-infrastructure, kept for Auth/Subscription details)
+// User model
 model User {
-  id             String   @id @default(uuid())
-  email          String   @unique
-  passwordHash   String?
-  name           String?
-  provider       String?  // for oauth (google/github)
-  providerId     String?
-  tier           Tier     @default(FREE)
-  timezone       String?
-  preferences    Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("users")
 }
 
-// Course model (from feature/api-backend-foundation)
+// Course model
 model Course {
   id          String   @id @default(uuid())
   title       String
@@ -47,7 +33,7 @@ model Course {
   @@map("courses")
 }
 
-// Goal model (from feature/api-backend-foundation)
+// Goal model
 model Goal {
   id          String   @id @default(uuid())
   userId      String
@@ -59,3 +45,4 @@ model Goal {
 
   @@map("goals")
 }
+
