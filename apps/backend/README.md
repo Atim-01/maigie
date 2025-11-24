@@ -51,8 +51,21 @@ This will:
    # Linux/Mac
    cp .env.example .env
    ```
+   
+   Edit `.env` and set your `DATABASE_URL` (e.g., `postgresql://postgres:postgres@localhost:5432/maigie`)
 
-5. **Run the development server:**
+5. **Generate Prisma Client:**
+   ```bash
+   poetry run prisma generate
+   ```
+
+6. **Run database migrations:**
+   ```bash
+   # Create initial migration
+   poetry run prisma migrate dev --name init
+   ```
+
+7. **Run the development server:**
    ```bash
    nx serve backend
    ```
@@ -107,22 +120,35 @@ poetry run pytest
 - `core/security.py` - JWT utilities, password hashing (bcrypt)
 - `core/oauth.py` - OAuth provider base structure (Google, GitHub)
 - `core/websocket.py` - WebSocket connection manager and event broadcasting
-- `core/database.py` - Database connection manager (placeholder for Prisma)
-- `core/cache.py` - Cache connection manager (placeholder for Redis)
+- `core/database.py` - Database connection manager (legacy placeholder)
+- `core/cache.py` - Cache connection manager (legacy placeholder)
+
+### Database & Dependencies (`src/utils/`)
+- `utils/dependencies.py` - Dependency injection for Prisma and Redis clients
+  - `get_db_client()` - FastAPI dependency for Prisma database client
+  - `get_redis_client()` - FastAPI dependency for Redis cache client
+  - Lifecycle management functions for startup/shutdown
+
+### Database Schema (`prisma/`)
+- `prisma/schema.prisma` - Prisma schema with database models (User, Course, Goal)
 
 ### Feature Modules
 - `src/routes/` - API route handlers
   - `routes/auth.py` - Authentication routes (login, register, OAuth)
+  - `routes/ai.py` - AI assistant routes with exception handling demos
   - `routes/realtime.py` - WebSocket routes for real-time updates
+  - `routes/courses.py`, `routes/goals.py`, `routes/schedule.py`, etc.
 - `src/services/` - Business logic
 - `src/models/` - Pydantic schemas and ORM models
   - `models/auth.py` - Authentication models (UserRegister, UserLogin, TokenResponse, etc.)
+  - `models/error_response.py` - Standardized error response model
   - `models/websocket.py` - WebSocket message models
 - `src/db/` - Database connection and migrations
 - `src/tasks/` - Background tasks (Celery/Dramatiq)
 - `src/ai_client/` - LLM and embeddings clients
 - `src/workers/` - Async workers
 - `src/utils/` - Utility functions
+  - `utils/exceptions.py` - Custom business logic exceptions (SubscriptionLimitError, ResourceNotFoundError, etc.)
 
 ### Tests
 - `tests/` - Test files
@@ -136,7 +162,8 @@ poetry run pytest
 ✅ **Application structure follows defined patterns** - Organized according to Backend Infrastructure issue  
 ✅ **Environment configuration works correctly** - Pydantic Settings with .env support  
 ✅ **Dependency injection system works** - FastAPI Depends pattern implemented  
-✅ **Middleware stack is configured** - Logging, Security Headers, and CORS middleware
+✅ **Middleware stack is configured** - Logging, Security Headers, and CORS middleware  
+✅ **Comprehensive exception handling** - Standardized error responses with global handlers
 
 ## WebSocket Framework Status
 
@@ -172,7 +199,7 @@ powershell -ExecutionPolicy Bypass -File scripts\verify-websocket.ps1
 
 ### Core Endpoints
 - `GET /` - Root endpoint with app info
-- `GET /health` - Health check endpoint
+- `GET /health` - Multi-service health check (validates DB and cache connectivity)
 - `GET /ready` - Readiness check (includes DB and cache status)
 - `GET /docs` - Interactive API documentation (Swagger UI)
 - `GET /redoc` - Alternative API documentation (ReDoc)
@@ -186,6 +213,16 @@ powershell -ExecutionPolicy Bypass -File scripts\verify-websocket.ps1
 - `GET /api/v1/auth/oauth/{provider}/authorize` - Initiate OAuth flow (google, github)
 - `GET /api/v1/auth/oauth/{provider}/callback` - OAuth callback endpoint
 - `GET /api/v1/auth/oauth/providers` - List available OAuth providers
+
+### API Module Endpoints
+All module endpoints are registered with `/api/v1` prefix:
+- `/api/v1/ai` - AI assistant routes
+- `/api/v1/courses` - Course management routes
+- `/api/v1/goals` - Goal tracking routes
+- `/api/v1/schedule` - Schedule management routes
+- `/api/v1/resources` - Resource management routes
+- `/api/v1/realtime` - WebSocket real-time communication
+- `/api/v1/examples` - Example/demonstration endpoints for testing exception handling
 
 ## Virtual Environment
 
@@ -228,6 +265,105 @@ See `.env.example` for available configuration options. Key settings:
 - `OAUTH_GITHUB_CLIENT_ID` - GitHub OAuth client ID (optional)
 - `OAUTH_GITHUB_CLIENT_SECRET` - GitHub OAuth client secret (optional)
 - `OAUTH_REDIRECT_URI` - OAuth redirect URI
+- `DATABASE_URL` - PostgreSQL connection string (required for Prisma)
+- `REDIS_URL` - Redis connection string (not yet implemented)
+
+## Database Setup
+
+This project uses Prisma as the ORM for PostgreSQL.
+
+### Prerequisites
+- PostgreSQL installed and running
+- Database created (e.g., `maigie`)
+
+### Setup Steps
+
+1. **Configure database URL in `.env`:**
+   ```env
+   DATABASE_URL="postgresql://username:password@localhost:5432/maigie"
+   ```
+
+2. **Generate Prisma Client:**
+   ```bash
+   poetry run prisma generate
+   ```
+
+3. **Run migrations:**
+   ```bash
+   # Create and apply migration
+   poetry run prisma migrate dev --name init
+   ```
+
+4. **Optional: Open Prisma Studio (database GUI):**
+   ```bash
+   poetry run prisma studio
+   ```
+
+### Prisma Commands
+
+- `prisma generate` - Generate Prisma Client
+- `prisma migrate dev` - Create and apply migrations in development
+- `prisma migrate deploy` - Apply migrations in production
+- `prisma studio` - Open Prisma Studio (database GUI)
+- `prisma db push` - Push schema changes without migrations (dev only)
+- `prisma db seed` - Run database seeds
+
+### Database Models
+
+Current schema includes:
+- **User** - User accounts with authentication and subscription tiers
+
+See `prisma/schema.prisma` for the complete schema definition.
+
+## Exception Handling
+
+The application implements comprehensive exception handling with standardized error responses.
+
+### Error Response Format
+
+All errors follow a consistent format:
+```json
+{
+    "status_code": 403,
+    "code": "SUBSCRIPTION_LIMIT_EXCEEDED",
+    "message": "This feature requires a Premium subscription",
+    "detail": "Optional debug information (only in development)"
+}
+```
+
+### Custom Exceptions
+
+- **`SubscriptionLimitError`** (403) - Basic users accessing Premium features
+- **`ResourceNotFoundError`** (404) - Requested resource doesn't exist
+- **`UnauthorizedError`** (401) - Authentication required
+- **`ForbiddenError`** (403) - Insufficient permissions
+- **`ValidationError`** (422) - Business logic validation failures
+- **`InternalServerError`** (500) - Unexpected errors
+
+### Testing Exception Handling
+
+Example endpoints are available at `/api/v1/examples/*` for testing:
+
+```bash
+# Test subscription limit (should return 403)
+curl -X POST http://localhost:8000/api/v1/examples/ai/voice-session \
+  -H "Content-Type: application/json" \
+  -d '{"session_type": "conversation"}'
+
+# Test resource not found (should return 404)
+curl http://localhost:8000/api/v1/examples/ai/process/nonexistent
+
+# Get info about all example endpoints
+curl http://localhost:8000/api/v1/examples/info
+
+# Run automated tests
+poetry run pytest tests/test_exception_handling.py -v
+
+# Run verification script
+poetry run python verify_exceptions.py
+```
+
+See `EXCEPTION_HANDLING_GUIDE.md` for complete documentation.
 - `DATABASE_URL` - PostgreSQL connection string (for future use)
 - `REDIS_URL` - Redis connection string (default: `redis://localhost:6379/0`)
 - `REDIS_KEY_PREFIX` - Prefix for all cache keys (default: `maigie:`)

@@ -1,4 +1,21 @@
-"""Application configuration management."""
+"""
+Application configuration management.
+
+Copyright (C) 2024 Maigie Team
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 
 import json
 from functools import lru_cache
@@ -70,8 +87,8 @@ class Settings(BaseSettings):
     OAUTH_GITHUB_CLIENT_SECRET: str = ""
     OAUTH_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/oauth/callback"
 
-    # Database (for future use)
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/maigie"
+    # Database 
+    DATABASE_URL: str = ""
 
     # Redis Cache
     REDIS_URL: str = "redis://localhost:6379/0"
