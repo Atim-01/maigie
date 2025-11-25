@@ -35,7 +35,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from .config import get_settings
 from .core.cache import cache
@@ -396,6 +396,22 @@ def create_app() -> FastAPI:
             "message": settings.APP_NAME,
             "version": settings.APP_VERSION,
         }
+
+    # Prometheus metrics endpoint (unsecured, root-level)
+    @app.get("/metrics")
+    async def metrics() -> Response:
+        """
+        Prometheus metrics endpoint.
+        
+        Exposes Prometheus metrics in the standard exposition format.
+        This endpoint is unsecured and should be accessible for monitoring systems.
+        """
+        from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+        
+        return Response(
+            content=generate_latest(),
+            media_type=CONTENT_TYPE_LATEST,
+        )
 
     # Multi-service health check endpoint
     @app.get("/health")
