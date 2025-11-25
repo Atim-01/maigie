@@ -75,7 +75,7 @@ export function Community() {
               </li>
             </ul>
 
-            <a href="https://github.com/Vcky4/maigie/docs" target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-primary font-semibold hover:text-primary/80 transition-colors">
+            <a href="https://github.com/Vcky4/maigie/blob/development/README.md" target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-primary font-semibold hover:text-primary/80 transition-colors">
               View Documentation <ArrowRight size={16} className="ml-2" />
             </a>
           </motion.div>
