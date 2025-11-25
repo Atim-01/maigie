@@ -335,12 +335,6 @@ async def lifespan(app: FastAPI):
     # Connect to cache (legacy placeholder - kept for compatibility)
     await cache.connect()
     logger.info("Legacy cache connection initialized")
-    await db.connect()
-    print("Legacy database connection initialized")
-
-    # Connect to cache (legacy placeholder - kept for compatibility)
-    await cache.connect()
-    print("Legacy cache connection initialized")
     
     # Initialize new dependency injection system
     # Prisma client will be initialized on first use via get_db_client()
@@ -348,7 +342,6 @@ async def lifespan(app: FastAPI):
     # Initialize Redis client for dependency injection
     await initialize_redis_client()
     logger.info("Redis client initialized for dependency injection")
-    print("Redis client initialized for dependency injection")
 
     # --- WebSocket Manager ---
     settings = get_settings()
