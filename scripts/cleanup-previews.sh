@@ -1,0 +1,113 @@
+#!/bin/bash
+# Cleanup script for old preview environments
+# Run this periodically (via cron) to clean up preview environments:
+# - Previews older than 3 days (if PR is still open)
+# - All previews for closed/merged PRs
+# Usage: bash scripts/cleanup-previews.sh [GITHUB_TOKEN] [REPO_OWNER] [REPO_NAME]
+
+set -e
+
+PREVIEW_DIR="/opt/maigie/previews"
+MAX_AGE_DAYS=3
+LOG_FILE="/var/log/maigie-cleanup.log"
+GITHUB_TOKEN="${1:-}"
+REPO_OWNER="${2:-}"
+REPO_NAME="${3:-}"
+
+# Create log file if it doesn't exist
+touch "$LOG_FILE"
+
+echo "[$(date)] Starting preview cleanup..." >> "$LOG_FILE"
+echo "[$(date)] Max age for open PRs: $MAX_AGE_DAYS days" >> "$LOG_FILE"
+
+if [ ! -d "$PREVIEW_DIR" ]; then
+    echo "[$(date)] Preview directory does not exist: $PREVIEW_DIR" >> "$LOG_FILE"
+    exit 0
+fi
+
+# Function to check if PR is closed/merged
+check_pr_status() {
+    local pr_number=$1
+    if [ -z "$GITHUB_TOKEN" ] || [ -z "$REPO_OWNER" ] || [ -z "$REPO_NAME" ]; then
+        # If GitHub API not available, assume PR is open
+        echo "open"
+        return
+    fi
+    
+    local response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+        "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/pulls/$pr_number" 2>/dev/null || echo "")
+    
+    if [ -z "$response" ]; then
+        echo "unknown"
+        return
+    fi
+    
+    local state=$(echo "$response" | grep -o '"state":"[^"]*"' | cut -d'"' -f4)
+    local merged=$(echo "$response" | grep -o '"merged":[^,]*' | cut -d':' -f2)
+    
+    if [ "$state" = "closed" ] || [ "$merged" = "true" ]; then
+        echo "closed"
+    else
+        echo "open"
+    fi
+}
+
+# Function to cleanup preview
+cleanup_preview() {
+    local preview_id=$1
+    local reason=$2
+    
+    echo "[$(date)] Cleaning up preview: $preview_id (Reason: $reason)" >> "$LOG_FILE"
+    
+    cd "$PREVIEW_DIR/$preview_id" 2>/dev/null || return
+    
+    # Stop and remove containers
+    if [ -f "docker-compose.yml" ]; then
+        docker-compose down -v 2>&1 >> "$LOG_FILE" || echo "[$(date)] Warning: Failed to stop containers for $preview_id" >> "$LOG_FILE"
+    fi
+    
+    # Remove directory
+    cd "$PREVIEW_DIR"
+    rm -rf "$preview_id"
+    echo "[$(date)] Removed preview directory: $preview_id" >> "$LOG_FILE"
+}
+
+# Process each preview directory
+find "$PREVIEW_DIR" -mindepth 1 -maxdepth 1 -type d | while read dir; do
+    PREVIEW_ID=$(basename "$dir")
+    
+    # Extract PR number from preview ID (format: pr-123)
+    if [[ "$PREVIEW_ID" =~ ^pr-([0-9]+)$ ]]; then
+        PR_NUMBER="${BASH_REMATCH[1]}"
+        
+        # Check PR status
+        PR_STATUS=$(check_pr_status "$PR_NUMBER")
+        
+        # Check directory age
+        DIR_AGE_DAYS=$(( ($(date +%s) - $(stat -c %Y "$dir")) / 86400 ))
+        
+        # Cleanup if:
+        # 1. PR is closed/merged (immediate cleanup)
+        # 2. PR is open but preview is older than MAX_AGE_DAYS
+        if [ "$PR_STATUS" = "closed" ]; then
+            cleanup_preview "$PREVIEW_ID" "PR #$PR_NUMBER is closed/merged"
+        elif [ "$DIR_AGE_DAYS" -ge "$MAX_AGE_DAYS" ]; then
+            cleanup_preview "$PREVIEW_ID" "Preview is $DIR_AGE_DAYS days old (max: $MAX_AGE_DAYS days)"
+        else
+            echo "[$(date)] Keeping preview: $PREVIEW_ID (PR #$PR_NUMBER is $PR_STATUS, age: $DIR_AGE_DAYS days)" >> "$LOG_FILE"
+        fi
+    else
+        # If preview ID doesn't match expected format, check age only
+        DIR_AGE_DAYS=$(( ($(date +%s) - $(stat -c %Y "$dir")) / 86400 ))
+        if [ "$DIR_AGE_DAYS" -ge "$MAX_AGE_DAYS" ]; then
+            cleanup_preview "$PREVIEW_ID" "Preview is $DIR_AGE_DAYS days old (unknown PR)"
+        fi
+    fi
+done
+
+# Prune unused Docker resources (images, containers, volumes, networks older than 7 days)
+echo "[$(date)] Pruning unused Docker resources..." >> "$LOG_FILE"
+docker system prune -af --volumes --filter "until=168h" >> "$LOG_FILE" 2>&1 || true
+
+echo "[$(date)] Cleanup complete!" >> "$LOG_FILE"
+

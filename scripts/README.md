@@ -1,0 +1,72 @@
+# VPS Deployment Scripts
+
+This directory contains scripts for managing preview environments on the Contabo VPS.
+
+## Scripts
+
+### `vps-setup.sh`
+Initial setup script for the VPS. Run this once to:
+- Create directory structure
+- Install Docker and Docker Compose
+- Set up cron job for automatic cleanup
+
+**Usage:**
+```bash
+bash scripts/vps-setup.sh
+```
+
+### `cleanup-previews.sh`
+Cleanup script that runs automatically via cron job. It:
+- Cleans up previews for closed/merged PRs immediately
+- Cleans up previews older than 3 days (if PR is still open)
+- Prunes unused Docker resources
+
+**Usage:**
+```bash
+# Without GitHub API (age-based cleanup only)
+bash scripts/cleanup-previews.sh
+
+# With GitHub API (checks PR status)
+bash scripts/cleanup-previews.sh "GITHUB_TOKEN" "repo-owner" "repo-name"
+```
+
+**Cron Configuration:**
+```bash
+# Runs daily at 2 AM
+0 2 * * * /opt/maigie/scripts/cleanup-previews.sh "GITHUB_TOKEN" "repo-owner" "repo-name" >> /var/log/maigie-cleanup.log 2>&1
+```
+
+## Cleanup Logic
+
+1. **On PR Close/Merge**: GitHub Actions workflow (`cleanup-preview` job) automatically cleans up immediately
+2. **Daily Cron Job**: Checks all previews and cleans up:
+   - Previews for closed/merged PRs (regardless of age)
+   - Previews older than 3 days (if PR is still open)
+
+## GitHub Token Setup (Optional)
+
+To enable PR status checking in the cleanup script:
+
+1. Create a GitHub Personal Access Token with `public_repo` scope
+2. Store it securely on the VPS (e.g., in a file with restricted permissions)
+3. Update the cron job to pass the token
+
+```bash
+# Create token file
+echo "your_github_token" > /root/.github_token
+chmod 600 /root/.github_token
+
+# Update cron job
+crontab -e
+# Change to:
+0 2 * * * /opt/maigie/scripts/cleanup-previews.sh "$(cat /root/.github_token)" "your-org" "your-repo" >> /var/log/maigie-cleanup.log 2>&1
+```
+
+## Logs
+
+Cleanup logs are written to `/var/log/maigie-cleanup.log`. Check this file to monitor cleanup activity:
+
+```bash
+tail -f /var/log/maigie-cleanup.log
+```
+

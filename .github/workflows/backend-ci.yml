@@ -1,14 +1,19 @@
-name: Backend CI
+name: Backend CI/CD
 
 on:
   push:
-    branches: [ "development", "main", "feature/**" ]
+    branches:
+      - main
+      - development
     paths:
       - 'apps/backend/**'
   pull_request:
-    branches: [ "development" ]
+    branches:
+      - main
+      - development
     paths:
       - 'apps/backend/**'
+    types: [opened, synchronize, reopened, closed]
 
 defaults:
   run:
@@ -32,25 +37,386 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-    - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
-    - name: Install Dependencies
-      run: poetry install --no-root
-    - name: Run Linting
-      run: |
-        poetry run black . --check
-        poetry run flake8 .
-    - name: Generate Prisma Client
-      run: poetry run prisma generate
-      env:
-        DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
-    - name: Run Tests
-      run: poetry run pytest
-      env:
-        DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Install Dependencies
+        run: poetry install --no-root
+      - name: Run Linting
+        run: |
+          poetry run black . --check
+          poetry run flake8 .
+      - name: Generate Prisma Client
+        run: poetry run prisma generate
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
+      - name: Run Tests
+        run: poetry run pytest
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
+
+  deploy-preview:
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate Preview ID
+        id: preview
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PREVIEW_ID="pr-${PR_NUMBER}"
+          echo "id=$PREVIEW_ID" >> $GITHUB_OUTPUT
+          echo "PREVIEW_ID=$PREVIEW_ID" >> $GITHUB_ENV
+
+      - name: Build Docker Image
+        working-directory: ./apps/backend
+        run: |
+          docker build -t maigie-backend-preview:${{ steps.preview.outputs.id }} .
+
+      - name: Save Docker Image
+        run: |
+          docker save maigie-backend-preview:${{ steps.preview.outputs.id }} | gzip > /tmp/preview-image.tar.gz
+
+      - name: Deploy to Contabo VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "/tmp/preview-image.tar.gz"
+          target: "/tmp/"
+
+      - name: Load Image and Deploy Preview
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/maigie/previews
+            
+            # Create preview directory
+            mkdir -p ${{ steps.preview.outputs.id }}
+            cd ${{ steps.preview.outputs.id }}
+            
+            # Load Docker image
+            docker load < /tmp/preview-image.tar.gz
+            rm /tmp/preview-image.tar.gz
+            
+            # Generate random password for preview database
+            POSTGRES_PASSWORD=$(openssl rand -hex 16)
+            
+            # Create docker-compose.yml
+            cat > docker-compose.yml << EOF
+            version: '3.8'
+            services:
+              postgres:
+                image: postgres:15-alpine
+                container_name: maigie-preview-postgres-${{ steps.preview.outputs.id }}
+                environment:
+                  POSTGRES_USER: maigie
+                  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+                  POSTGRES_DB: maigie_preview_${{ steps.preview.outputs.id }}
+                volumes:
+                  - postgres_data:/var/lib/postgresql/data
+                healthcheck:
+                  test: ["CMD-SHELL", "pg_isready -U maigie"]
+                  interval: 5s
+                  timeout: 5s
+                  retries: 5
+                networks:
+                  - preview_net
+            
+              redis:
+                image: redis:7-alpine
+                container_name: maigie-preview-redis-${{ steps.preview.outputs.id }}
+                healthcheck:
+                  test: ["CMD", "redis-cli", "ping"]
+                  interval: 5s
+                  timeout: 3s
+                  retries: 5
+                networks:
+                  - preview_net
+            
+              backend:
+                image: maigie-backend-preview:${{ steps.preview.outputs.id }}
+                container_name: maigie-preview-backend-${{ steps.preview.outputs.id }}
+                environment:
+                  DATABASE_URL: postgresql://maigie:${POSTGRES_PASSWORD}@postgres:5432/maigie_preview_${{ steps.preview.outputs.id }}
+                  REDIS_URL: redis://redis:6379/0
+                  ENVIRONMENT: preview
+                  PREVIEW_ID: ${{ steps.preview.outputs.id }}
+                ports:
+                  - "0:8000"
+                depends_on:
+                  postgres:
+                    condition: service_healthy
+                  redis:
+                    condition: service_healthy
+                networks:
+                  - preview_net
+                command: >
+                  sh -c "
+                    prisma migrate deploy &&
+                    prisma db seed &&
+                    uvicorn src.main:app --host 0.0.0.0 --port 8000
+                  "
+            
+            volumes:
+              postgres_data:
+            
+            networks:
+              preview_net:
+                driver: bridge
+            EOF
+            
+            # Start preview environment
+            docker-compose up -d
+            
+            # Wait for backend to be ready
+            sleep 10
+            
+            # Get exposed port and save to file for retrieval
+            PORT=$(docker port maigie-preview-backend-${{ steps.preview.outputs.id }} 2>/dev/null | cut -d: -f2 | head -n1)
+            
+            if [ -z "$PORT" ]; then
+              echo "Failed to get port"
+              docker-compose logs
+              exit 1
+            fi
+            
+            PREVIEW_URL="http://${{ secrets.VPS_HOST }}:$PORT"
+            echo "$PREVIEW_URL" > /tmp/preview_url_${{ steps.preview.outputs.id }}.txt
+            echo "PREVIEW_URL=$PREVIEW_URL" >> $GITHUB_ENV
+            echo "Preview deployed at: $PREVIEW_URL"
+
+      - name: Retrieve Preview URL and Comment on PR
+        uses: appleboy/scp-action@v0.1.7
+        if: github.event_name == 'pull_request'
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "/tmp/preview_url_${{ steps.preview.outputs.id }}.txt"
+          target: "/tmp/"
+
+      - name: Comment Preview URL on PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let previewUrl = 'http://${{ secrets.VPS_HOST }}:8000'; // fallback
+            
+            try {
+              const urlFile = '/tmp/preview_url_${{ steps.preview.outputs.id }}.txt';
+              if (fs.existsSync(urlFile)) {
+                previewUrl = fs.readFileSync(urlFile, 'utf-8').trim();
+              }
+            } catch (e) {
+              console.log('Could not read preview URL file, using fallback');
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **Preview deployment ready!**\n\n🔗 **Preview URL:** ${previewUrl}\n\n📝 **Preview ID:** ${{ steps.preview.outputs.id }}\n\n⚠️ This preview will be automatically cleaned up when the PR is closed, or after 3 days if the PR remains open.`
+            });
+
+  deploy-production:
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        working-directory: ./apps/backend
+        run: docker build -t maigie-backend:latest .
+
+      - name: Save Docker Image
+        run: |
+          docker save maigie-backend:latest | gzip > /tmp/production-image.tar.gz
+
+      - name: Deploy to Contabo VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "/tmp/production-image.tar.gz"
+          target: "/tmp/"
+
+      - name: Load Image and Deploy Production
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/maigie/production
+            
+            # Load Docker image
+            docker load < /tmp/production-image.tar.gz
+            rm /tmp/production-image.tar.gz
+            
+            # Update environment variables
+            export DATABASE_URL="${{ secrets.PRODUCTION_DATABASE_URL }}"
+            export REDIS_URL="redis://redis:6379/0"
+            export ENVIRONMENT="production"
+            
+            # Update docker-compose.yml with environment variables
+            cat > .env << EOF
+            DATABASE_URL=${{ secrets.PRODUCTION_DATABASE_URL }}
+            REDIS_URL=redis://redis:6379/0
+            ENVIRONMENT=production
+            EOF
+            
+            # Deploy
+            docker-compose pull || true
+            docker-compose up -d --build
+            
+            # Wait for services to be ready
+            sleep 15
+            
+            # Run migrations
+            docker-compose exec -T backend prisma migrate deploy || echo "Migrations already applied"
+            
+            echo "Production deployment complete!"
+
+  deploy-staging:
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/development' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        working-directory: ./apps/backend
+        run: docker build -t maigie-backend:staging .
+
+      - name: Save Docker Image
+        run: |
+          docker save maigie-backend:staging | gzip > /tmp/staging-image.tar.gz
+
+      - name: Deploy to Contabo VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "/tmp/staging-image.tar.gz"
+          target: "/tmp/"
+
+      - name: Load Image and Deploy Staging
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/maigie/staging
+            
+            # Load Docker image
+            docker load < /tmp/staging-image.tar.gz
+            rm /tmp/staging-image.tar.gz
+            
+            # Update environment variables
+            export DATABASE_URL="${{ secrets.STAGING_DATABASE_URL }}"
+            export REDIS_URL="redis://redis:6379/0"
+            export ENVIRONMENT="staging"
+            
+            # Update docker-compose.yml with environment variables
+            cat > .env << EOF
+            DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}
+            REDIS_URL=redis://redis:6379/0
+            ENVIRONMENT=staging
+            EOF
+            
+            # Deploy
+            docker-compose pull || true
+            docker-compose up -d --build
+            
+            # Wait for services to be ready
+            sleep 15
+            
+            # Run migrations and seed
+            docker-compose exec -T backend prisma migrate deploy || echo "Migrations already applied"
+            docker-compose exec -T backend prisma db seed || echo "Seed already applied"
+            
+            echo "Staging deployment complete!"
+
+  cleanup-preview:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Preview ID
+        id: preview
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PREVIEW_ID="pr-${PR_NUMBER}"
+          echo "id=$PREVIEW_ID" >> $GITHUB_OUTPUT
+          echo "PREVIEW_ID=$PREVIEW_ID" >> $GITHUB_ENV
+
+      - name: Cleanup Preview Environment
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            PREVIEW_DIR="/opt/maigie/previews/${{ steps.preview.outputs.id }}"
+            
+            if [ -d "$PREVIEW_DIR" ]; then
+              echo "Cleaning up preview: ${{ steps.preview.outputs.id }}"
+              cd "$PREVIEW_DIR"
+              
+              # Stop and remove containers
+              if [ -f "docker-compose.yml" ]; then
+                docker-compose down -v || true
+              fi
+              
+              # Remove directory
+              cd /opt/maigie/previews
+              rm -rf "${{ steps.preview.outputs.id }}"
+              
+              echo "Preview ${{ steps.preview.outputs.id }} cleaned up successfully"
+            else
+              echo "Preview directory not found: $PREVIEW_DIR"
+            fi
+            
+            # Prune unused Docker resources
+            docker system prune -af --volumes --filter "until=24h" || true
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = ${{ github.event.pull_request.number }};
+            github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🧹 **Preview environment cleaned up**\n\nPreview deployment for PR #${prNumber} has been removed.`
+            });
