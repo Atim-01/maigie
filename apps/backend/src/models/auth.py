@@ -16,18 +16,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
-"""
-Authentication routes (JWT Signup/Login + OAuth Placeholders).
-
-Copyright (C) 2024 Maigie Team
-"""
-
-"""
-Authentication models (Pydantic schemas).
-"""
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 # --- Token Schemas ---
 

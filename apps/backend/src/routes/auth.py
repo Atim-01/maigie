@@ -367,7 +367,7 @@ async def reset_password(request: PasswordResetRequest):
     if user:
         # TODO: Generate reset token and send email via SendGrid/AWS
         print(f" MOCK EMAIL: Sending password reset link to {request.email}")
-    
+
     # Always return 200 to prevent email enumeration attacks
     return {"message": "If an account exists, a reset email has been sent."}
 
@@ -378,3 +378,4 @@ async def confirm_email(data: EmailConfirmation):
     """
     # TODO: Validate token and update user.isActive = True
     return {"message": "Email successfully confirmed"}
+
