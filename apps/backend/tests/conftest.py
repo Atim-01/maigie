@@ -34,7 +34,7 @@ async def db_lifecycle():
         connected = True
         # Check if tables exist by trying a simple query
         try:
-            await db.query_raw("SELECT 1 FROM \"User\" LIMIT 1")
+            await db.query_raw('SELECT 1 FROM "User" LIMIT 1')
         except TableNotFoundError:
             pytest.skip(
                 "Database tables do not exist. Run migrations first: "
