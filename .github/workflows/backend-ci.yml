@@ -273,6 +273,7 @@ jobs:
         id: setup-domain
         if: github.event_name == 'pull_request'
         run: |
+          # Get PORT from VPS
           PORT=$(ssh -i ~/.ssh/vps_key -o StrictHostKeyChecking=no \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
             "cat /tmp/preview_port_${{ steps.preview.outputs.id }}.txt 2>/dev/null | cut -d= -f2")
@@ -283,6 +284,13 @@ jobs:
               "docker port maigie-preview-backend-${{ steps.preview.outputs.id }} 2>/dev/null | cut -d: -f2 | head -n1")
           fi
           
+          if [ -z "$PORT" ]; then
+            echo "❌ Failed to get port for preview backend"
+            exit 1
+          fi
+          
+          echo "✓ Backend is running on port: $PORT"
+          
           PREVIEW_DOMAIN_VALUE="${{ secrets.PREVIEW_DOMAIN }}"
           if [ -z "$PREVIEW_DOMAIN_VALUE" ]; then
             PREVIEW_DOMAIN_VALUE="maigie.com"
@@ -290,10 +298,8 @@ jobs:
           
           PREVIEW_DOMAIN="${{ steps.preview.outputs.id }}-api-preview.${PREVIEW_DOMAIN_VALUE}"
           
-          # Create Nginx config on VPS
-          ssh -i ~/.ssh/vps_key -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "cat > /tmp/nginx-preview-${{ steps.preview.outputs.id }}.conf << 'NGINX_EOF'
+          # Create Nginx config locally with variables already expanded
+          cat > /tmp/nginx-preview.conf << EOF
           server {
               listen 80;
               server_name ${PREVIEW_DOMAIN};
@@ -319,8 +325,19 @@ jobs:
                   access_log off;
               }
           }
-          NGINX_EOF
-          sudo mv /tmp/nginx-preview-${{ steps.preview.outputs.id }}.conf /www/server/panel/vhost/nginx/${{ steps.preview.outputs.id }}.preview.conf && sudo nginx -t && sudo systemctl reload nginx"
+          EOF
+          
+          # Copy config to VPS
+          scp -i ~/.ssh/vps_key -o StrictHostKeyChecking=no \
+            /tmp/nginx-preview.conf \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/nginx-preview-${{ steps.preview.outputs.id }}.conf
+          
+          # Move to Nginx directory and reload
+          ssh -i ~/.ssh/vps_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "sudo mv /tmp/nginx-preview-${{ steps.preview.outputs.id }}.conf /www/server/panel/vhost/nginx/${{ steps.preview.outputs.id }}.preview.conf && sudo nginx -t && sudo systemctl reload nginx"
+          
+          echo "✓ Nginx config created and reloaded for ${PREVIEW_DOMAIN} → localhost:${PORT}"
           
           # Add Cloudflare Tunnel route and DNS record via API
           if [ -n "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ] && [ -n "${{ secrets.CLOUDFLARE_TUNNEL_ID }}" ] && [ -n "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] && [ -n "${{ secrets.CLOUDFLARE_ZONE_ID }}" ]; then
