@@ -10,9 +10,15 @@ if [ ! -f "$TEMPLATE_FILE" ]; then
   exit 1
 fi
 
-echo "Generating '$OUTPUT_FILE' from '$TEMPLATE_FILE' using environment variables..."
+echo "=========================================="
+echo "Generating '$OUTPUT_FILE' from '$TEMPLATE_FILE'"
+echo "=========================================="
 
 > "$OUTPUT_FILE"
+
+SECRETS_USED=0
+DEFAULTS_USED=0
+TOTAL_VALUES=0
 
 while IFS= read -r line || [ -n "$line" ]; do
   # Preserve empty lines and comments
@@ -25,9 +31,21 @@ while IFS= read -r line || [ -n "$line" ]; do
   if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
     key="${BASH_REMATCH[1]}"
     default_value="${BASH_REMATCH[2]}"
+    TOTAL_VALUES=$((TOTAL_VALUES + 1))
 
-    # Use environment variable if set, otherwise fall back to default from template
-    value="${!key:-$default_value}"
+    # Check if environment variable (GitHub secret) is set
+    if [ -n "${!key:-}" ]; then
+      # Use secret value
+      value="${!key}"
+      echo "✓ Using GitHub secret for ${key}"
+      SECRETS_USED=$((SECRETS_USED + 1))
+    else
+      # Use default value from template
+      value="$default_value"
+      echo "→ Using default value for ${key}"
+      DEFAULTS_USED=$((DEFAULTS_USED + 1))
+    fi
+    
     echo "${key}=${value}" >> "$OUTPUT_FILE"
   else
     # Any other line is copied as-is
@@ -35,6 +53,12 @@ while IFS= read -r line || [ -n "$line" ]; do
   fi
 done < "$TEMPLATE_FILE"
 
-echo "Generated '$OUTPUT_FILE'."
+echo "=========================================="
+echo "Summary:"
+echo "  Total values processed: ${TOTAL_VALUES}"
+echo "  GitHub secrets used: ${SECRETS_USED}"
+echo "  Default values used: ${DEFAULTS_USED}"
+echo "=========================================="
+echo "Generated '$OUTPUT_FILE' successfully."
 
 

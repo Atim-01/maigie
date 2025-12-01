@@ -85,11 +85,63 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: List variables in .env.example
+        run: |
+          echo "Variables found in .env.example:"
+          chmod +x scripts/extract-env-keys.sh
+          scripts/extract-env-keys.sh .env.example || echo "No .env.example found or no variables extracted"
+
       - name: Generate .env from .env.example for preview
         env:
           ENVIRONMENT: preview
+          # Dynamically pass ALL possible GitHub secrets that match keys in .env.example
+          # The script will automatically check each key and use secret if available, otherwise use default
+          # If a secret doesn't exist in GitHub, it will be empty and script will use .env.example default
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          OAUTH_GOOGLE_CLIENT_ID: ${{ secrets.OAUTH_GOOGLE_CLIENT_ID }}
+          OAUTH_GOOGLE_CLIENT_SECRET: ${{ secrets.OAUTH_GOOGLE_CLIENT_SECRET }}
+          OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
+          OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
+          OAUTH_REDIRECT_URI: ${{ secrets.OAUTH_REDIRECT_URI }}
+          CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
+          CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
+          FRONTEND_BASE_URL: ${{ secrets.FRONTEND_BASE_URL }}
+          APP_NAME: ${{ secrets.APP_NAME }}
+          DEBUG: ${{ secrets.DEBUG }}
+          ALGORITHM: ${{ secrets.ALGORITHM }}
+          ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+          REFRESH_TOKEN_EXPIRE_DAYS: ${{ secrets.REFRESH_TOKEN_EXPIRE_DAYS }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          ALLOWED_HOSTS: ${{ secrets.ALLOWED_HOSTS }}
+          REDIS_KEY_PREFIX: ${{ secrets.REDIS_KEY_PREFIX }}
+          REDIS_SOCKET_TIMEOUT: ${{ secrets.REDIS_SOCKET_TIMEOUT }}
+          REDIS_SOCKET_CONNECT_TIMEOUT: ${{ secrets.REDIS_SOCKET_CONNECT_TIMEOUT }}
+          WEBSOCKET_HEARTBEAT_INTERVAL: ${{ secrets.WEBSOCKET_HEARTBEAT_INTERVAL }}
+          WEBSOCKET_HEARTBEAT_TIMEOUT: ${{ secrets.WEBSOCKET_HEARTBEAT_TIMEOUT }}
+          WEBSOCKET_MAX_RECONNECT_ATTEMPTS: ${{ secrets.WEBSOCKET_MAX_RECONNECT_ATTEMPTS }}
+          CELERY_TASK_SERIALIZER: ${{ secrets.CELERY_TASK_SERIALIZER }}
+          CELERY_RESULT_SERIALIZER: ${{ secrets.CELERY_RESULT_SERIALIZER }}
+          CELERY_ACCEPT_CONTENT: ${{ secrets.CELERY_ACCEPT_CONTENT }}
+          CELERY_TIMEZONE: ${{ secrets.CELERY_TIMEZONE }}
+          CELERY_ENABLE_UTC: ${{ secrets.CELERY_ENABLE_UTC }}
+          CELERY_TASK_ALWAYS_EAGER: ${{ secrets.CELERY_TASK_ALWAYS_EAGER }}
+          CELERY_TASK_ACKS_LATE: ${{ secrets.CELERY_TASK_ACKS_LATE }}
+          CELERY_TASK_REJECT_ON_WORKER_LOST: ${{ secrets.CELERY_TASK_REJECT_ON_WORKER_LOST }}
+          CELERY_WORKER_PREFETCH_MULTIPLIER: ${{ secrets.CELERY_WORKER_PREFETCH_MULTIPLIER }}
+          CELERY_TASK_DEFAULT_QUEUE: ${{ secrets.CELERY_TASK_DEFAULT_QUEUE }}
+          CELERY_TASK_DEFAULT_EXCHANGE: ${{ secrets.CELERY_TASK_DEFAULT_EXCHANGE }}
+          CELERY_TASK_DEFAULT_ROUTING_KEY: ${{ secrets.CELERY_TASK_DEFAULT_ROUTING_KEY }}
+          CELERY_RESULT_EXPIRES: ${{ secrets.CELERY_RESULT_EXPIRES }}
+          LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
+          LOG_FORMAT: ${{ secrets.LOG_FORMAT }}
+          SENTRY_TRACES_SAMPLE_RATE: ${{ secrets.SENTRY_TRACES_SAMPLE_RATE }}
         run: |
           chmod +x scripts/generate-env-from-secrets.sh
+          chmod +x scripts/load-all-secrets.sh
+          source scripts/load-all-secrets.sh .env.example || true
           ./scripts/generate-env-from-secrets.sh .env .env.example
 
       - name: Generate Preview ID
@@ -147,6 +199,50 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            # Set ALL GitHub secrets as environment variables (dynamically based on .env.example keys)
+            # The script will check each key and use secret if available, otherwise use default from .env.example
+            export SENTRY_DSN="${{ secrets.SENTRY_DSN }}"
+            export SECRET_KEY="${{ secrets.SECRET_KEY }}"
+            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            export REDIS_URL="${{ secrets.REDIS_URL }}"
+            export OAUTH_GOOGLE_CLIENT_ID="${{ secrets.OAUTH_GOOGLE_CLIENT_ID }}"
+            export OAUTH_GOOGLE_CLIENT_SECRET="${{ secrets.OAUTH_GOOGLE_CLIENT_SECRET }}"
+            export OAUTH_GITHUB_CLIENT_ID="${{ secrets.OAUTH_GITHUB_CLIENT_ID }}"
+            export OAUTH_GITHUB_CLIENT_SECRET="${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}"
+            export OAUTH_REDIRECT_URI="${{ secrets.OAUTH_REDIRECT_URI }}"
+            export CELERY_BROKER_URL="${{ secrets.CELERY_BROKER_URL }}"
+            export CELERY_RESULT_BACKEND="${{ secrets.CELERY_RESULT_BACKEND }}"
+            export FRONTEND_BASE_URL="${{ secrets.FRONTEND_BASE_URL }}"
+            export APP_NAME="${{ secrets.APP_NAME }}"
+            export DEBUG="${{ secrets.DEBUG }}"
+            export ALGORITHM="${{ secrets.ALGORITHM }}"
+            export ACCESS_TOKEN_EXPIRE_MINUTES="${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}"
+            export REFRESH_TOKEN_EXPIRE_DAYS="${{ secrets.REFRESH_TOKEN_EXPIRE_DAYS }}"
+            export CORS_ORIGINS="${{ secrets.CORS_ORIGINS }}"
+            export ALLOWED_HOSTS="${{ secrets.ALLOWED_HOSTS }}"
+            export REDIS_KEY_PREFIX="${{ secrets.REDIS_KEY_PREFIX }}"
+            export REDIS_SOCKET_TIMEOUT="${{ secrets.REDIS_SOCKET_TIMEOUT }}"
+            export REDIS_SOCKET_CONNECT_TIMEOUT="${{ secrets.REDIS_SOCKET_CONNECT_TIMEOUT }}"
+            export WEBSOCKET_HEARTBEAT_INTERVAL="${{ secrets.WEBSOCKET_HEARTBEAT_INTERVAL }}"
+            export WEBSOCKET_HEARTBEAT_TIMEOUT="${{ secrets.WEBSOCKET_HEARTBEAT_TIMEOUT }}"
+            export WEBSOCKET_MAX_RECONNECT_ATTEMPTS="${{ secrets.WEBSOCKET_MAX_RECONNECT_ATTEMPTS }}"
+            export CELERY_TASK_SERIALIZER="${{ secrets.CELERY_TASK_SERIALIZER }}"
+            export CELERY_RESULT_SERIALIZER="${{ secrets.CELERY_RESULT_SERIALIZER }}"
+            export CELERY_ACCEPT_CONTENT="${{ secrets.CELERY_ACCEPT_CONTENT }}"
+            export CELERY_TIMEZONE="${{ secrets.CELERY_TIMEZONE }}"
+            export CELERY_ENABLE_UTC="${{ secrets.CELERY_ENABLE_UTC }}"
+            export CELERY_TASK_ALWAYS_EAGER="${{ secrets.CELERY_TASK_ALWAYS_EAGER }}"
+            export CELERY_TASK_ACKS_LATE="${{ secrets.CELERY_TASK_ACKS_LATE }}"
+            export CELERY_TASK_REJECT_ON_WORKER_LOST="${{ secrets.CELERY_TASK_REJECT_ON_WORKER_LOST }}"
+            export CELERY_WORKER_PREFETCH_MULTIPLIER="${{ secrets.CELERY_WORKER_PREFETCH_MULTIPLIER }}"
+            export CELERY_TASK_DEFAULT_QUEUE="${{ secrets.CELERY_TASK_DEFAULT_QUEUE }}"
+            export CELERY_TASK_DEFAULT_EXCHANGE="${{ secrets.CELERY_TASK_DEFAULT_EXCHANGE }}"
+            export CELERY_TASK_DEFAULT_ROUTING_KEY="${{ secrets.CELERY_TASK_DEFAULT_ROUTING_KEY }}"
+            export CELERY_RESULT_EXPIRES="${{ secrets.CELERY_RESULT_EXPIRES }}"
+            export LOG_LEVEL="${{ secrets.LOG_LEVEL }}"
+            export LOG_FORMAT="${{ secrets.LOG_FORMAT }}"
+            export SENTRY_TRACES_SAMPLE_RATE="${{ secrets.SENTRY_TRACES_SAMPLE_RATE }}"
+            
             cd /opt/maigie/previews
             
             # Clean up existing preview for this PR if it exists
@@ -201,7 +297,19 @@ jobs:
             # If generator is available, build DATABASE_URL and create .env
             if [ -f "./generate-env-from-secrets.sh" ]; then
               export DATABASE_URL="postgresql://maigie:${POSTGRES_PASSWORD}@postgres:5432/maigie_preview_${{ steps.preview.outputs.id }}"
+              export ENVIRONMENT="preview"
+              export PREVIEW_ID="${{ steps.preview.outputs.id }}"
+              export REDIS_URL="redis://redis:6379/0"
+              
+              # GitHub secrets are already available as environment variables (passed via envs in ssh-action)
+              # SENTRY_DSN and SECRET_KEY are passed from GitHub secrets
+              
+              echo "Running generate-env-from-secrets.sh with environment variables..."
               ./generate-env-from-secrets.sh .env .env.example
+              
+              echo ""
+              echo "Final .env file contents:"
+              cat .env
             fi
             
             # Create docker-compose.yml
