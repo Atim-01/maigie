@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.utils import BadDsn
 from starlette.middleware.sessions import SessionMiddleware
 
 # --- Import the database helper functions ---
@@ -178,18 +179,31 @@ async def lifespan(app: FastAPI):
     # Initialize Sentry
     sentry_dsn = settings.SENTRY_DSN
     if sentry_dsn and sentry_dsn.strip():
-        sentry_sdk.init(
-            dsn=sentry_dsn,
-            environment=settings.ENVIRONMENT,
-            traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
-            sample_rate=1.0,
-            integrations=[
-                FastApiIntegration(transaction_style="endpoint"),
-                LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
-            ],
-            release=settings.APP_VERSION,
-        )
-        logger.info("Sentry error tracking initialized")
+        # Check for placeholder values that indicate DSN is not configured
+        placeholder_values = ["project-id", "your-project-id", "placeholder", "xxx", "your-dsn"]
+        dsn_lower = sentry_dsn.lower()
+        is_placeholder = any(placeholder in dsn_lower for placeholder in placeholder_values)
+        
+        if is_placeholder:
+            logger.warning("Sentry DSN appears to be a placeholder - error tracking disabled")
+        else:
+            try:
+                sentry_sdk.init(
+                    dsn=sentry_dsn,
+                    environment=settings.ENVIRONMENT,
+                    traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+                    sample_rate=1.0,
+                    integrations=[
+                        FastApiIntegration(transaction_style="endpoint"),
+                        LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
+                    ],
+                    release=settings.APP_VERSION,
+                )
+                logger.info("Sentry error tracking initialized")
+            except BadDsn as e:
+                logger.warning(f"Invalid Sentry DSN (non-critical): {e}. Error tracking disabled.")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Sentry (non-critical): {e}. Error tracking disabled.")
     else:
         logger.warning("Sentry DSN not configured - error tracking disabled")
 
