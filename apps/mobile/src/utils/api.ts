@@ -1,12 +1,18 @@
-import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-// Backend URL - adjust as needed
-export const getApiUrl = () => {
-  return Platform.select({
-    android: 'http://10.0.2.2:8000',
-    ios: 'http://localhost:8000',
-    default: 'http://localhost:8000',
-  });
+// Get API Base URL from environment variables
+export const getApiUrl = (): string => {
+  const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl;
+  
+  if (!apiBaseUrl) {
+    // Fallback for development
+    console.warn('API_BASE_URL not configured, using default');
+    return __DEV__
+      ? 'http://localhost:8000'
+      : 'https://api.maigie.com';
+  }
+  
+  return apiBaseUrl;
 };
 
 export interface ApiRequestOptions {

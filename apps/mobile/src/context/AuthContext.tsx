@@ -1,6 +1,7 @@
 import React, { createContext, useState, ReactNode, useContext } from 'react';
 import Toast from 'react-native-toast-message';
 import { useApi } from './ApiContext';
+import { endpoints } from '../lib/endpoints';
 
 interface AuthContextType {
   userToken: string | null;
@@ -25,7 +26,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const data = await api.post<{ access_token: string }>('/login/json', { email, password }, {
+      const data = await api.post<{ access_token: string }>(endpoints.auth.login, { email, password }, {
         requiresAuth: false, // Login doesn't require auth token
       });
 
@@ -53,7 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async (email: string, password: string, name: string) => {
     setIsLoading(true);
     try {
-      await api.post('/signup', { email, password, name }, {
+      await api.post(endpoints.auth.signup, { email, password, name }, {
         requiresAuth: false, // Signup doesn't require auth token
       });
 
@@ -95,7 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const forgotPassword = async (email: string) => {
     setIsLoading(true);
     try {
-      await api.post('/forgot-password', { email }, {
+      await api.post(endpoints.auth.forgotPassword, { email }, {
         requiresAuth: false, // Forgot password doesn't require auth token
       });
       
@@ -120,7 +121,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const verifyOtp = async (email: string, otp: string) => {
     setIsLoading(true);
     try {
-      await api.post('/verify-otp', { email, otp }, {
+      await api.post(endpoints.auth.verifyOtp, { email, otp }, {
         requiresAuth: false, // OTP verification doesn't require auth token
       });
       
@@ -145,7 +146,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const resetPassword = async (email: string, otp: string, password: string) => {
     setIsLoading(true);
     try {
-      await api.post('/reset-password', { email, otp, password }, {
+      await api.post(endpoints.auth.resetPassword, { email, otp, password }, {
         requiresAuth: false, // Reset password doesn't require auth token
       });
       
