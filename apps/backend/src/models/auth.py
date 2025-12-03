@@ -16,7 +16,8 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer, field_validator
 
 # --- Token Schemas ---
 
@@ -62,6 +63,8 @@ class UserPreferencesResponse(BaseModel):
     language: str
     notifications: bool
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class UserResponse(BaseModel):
     """User response schema."""
@@ -73,8 +76,22 @@ class UserResponse(BaseModel):
     isActive: bool  # noqa: N815
     preferences: UserPreferencesResponse | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("tier")
+    def serialize_tier(self, v, _info):
+        """Serialize Tier enum to string."""
+        if v is None:
+            return "FREE"
+        if isinstance(v, str):
+            return v
+        # Handle Prisma enum objects - they might have .value or be directly string-like
+        if hasattr(v, "value"):
+            return str(v.value)
+        if hasattr(v, "name"):
+            return str(v.name)
+        # Fallback: convert to string
+        return str(v)
 
 
 class OAuthAuthorizeResponse(BaseModel):

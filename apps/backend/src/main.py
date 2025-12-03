@@ -1,4 +1,5 @@
 # apps/backend/src/main.py
+# apps/backend/src/main.py
 # Maigie - AI-powered student companion
 # Copyright (C) 2025 Maigie
 
@@ -10,7 +11,6 @@ Copyright (C) 2025 Maigie
 import logging
 import traceback
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Annotated, Any
 
 import sentry_sdk
@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.utils import BadDsn
 from starlette.middleware.sessions import SessionMiddleware
 
 # --- Import the database helper functions ---
@@ -40,13 +41,14 @@ from .models.error_response import ErrorResponse
 # --- Route Imports ---
 from .routes.ai import router as ai_router
 from .routes.auth import router as auth_router
+from .routes.users import router as users_router
 from .routes.courses import router as courses_router
 from .routes.examples import router as examples_router
 from .routes.goals import router as goals_router
 from .routes.realtime import router as realtime_router
 from .routes.resources import router as resources_router
 from .routes.schedule import router as schedule_router
-from .routes.users import router as users_router  # <--- ADDED THIS
+
 from .utils.dependencies import (
     cleanup_db_client,
     close_redis_client,
@@ -65,6 +67,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 # Global Exception Handlers
 # ============================================================================
+
 
 async def maigie_error_handler(request: Request, exc: MaigieError) -> JSONResponse:
     """Global exception handler for all MaigieError exceptions."""
@@ -143,7 +146,9 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         "traceback": traceback.format_exc(),
     }
 
-    logger.error(f"Unhandled exception: {type(exc).__name__}: {str(exc)}", exc_info=True, extra=log_context)
+    logger.error(
+        f"Unhandled exception: {type(exc).__name__}: {str(exc)}", exc_info=True, extra=log_context
+    )
     sentry_sdk.capture_exception(exc)
 
     error_response = ErrorResponse(
@@ -163,6 +168,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 # Application Lifespan
 # ============================================================================
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
@@ -173,18 +179,33 @@ async def lifespan(app: FastAPI):
     # Initialize Sentry
     sentry_dsn = settings.SENTRY_DSN
     if sentry_dsn and sentry_dsn.strip():
-        sentry_sdk.init(
-            dsn=sentry_dsn,
-            environment=settings.ENVIRONMENT,
-            traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
-            sample_rate=1.0,
-            integrations=[
-                FastApiIntegration(transaction_style="endpoint"),
-                LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
-            ],
-            release=settings.APP_VERSION,
-        )
-        logger.info("Sentry error tracking initialized")
+        # Check for placeholder values that indicate DSN is not configured
+        placeholder_values = ["project-id", "your-project-id", "placeholder", "xxx", "your-dsn"]
+        dsn_lower = sentry_dsn.lower()
+        is_placeholder = any(placeholder in dsn_lower for placeholder in placeholder_values)
+
+        if is_placeholder:
+            logger.warning("Sentry DSN appears to be a placeholder - error tracking disabled")
+        else:
+            try:
+                sentry_sdk.init(
+                    dsn=sentry_dsn,
+                    environment=settings.ENVIRONMENT,
+                    traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+                    sample_rate=1.0,
+                    integrations=[
+                        FastApiIntegration(transaction_style="endpoint"),
+                        LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
+                    ],
+                    release=settings.APP_VERSION,
+                )
+                logger.info("Sentry error tracking initialized")
+            except BadDsn as e:
+                logger.warning(f"Invalid Sentry DSN (non-critical): {e}. Error tracking disabled.")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to initialize Sentry (non-critical): {e}. Error tracking disabled."
+                )
     else:
         logger.warning("Sentry DSN not configured - error tracking disabled")
 
@@ -270,6 +291,7 @@ def create_app() -> FastAPI:
     @app.get("/metrics")
     async def metrics() -> Response:
         from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
         return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     # Health Check
@@ -297,7 +319,7 @@ def create_app() -> FastAPI:
         if db_status != "connected":
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={"status": "unhealthy", "db": db_status, "cache": cache_status}
+                detail={"status": "unhealthy", "db": db_status, "cache": cache_status},
             )
         return {"status": "healthy", "db": db_status, "cache": cache_status}
 
@@ -327,6 +349,7 @@ def create_app() -> FastAPI:
     app.include_router(examples_router)
 
     return app
+
 
 # Create app instance
 app = create_app()

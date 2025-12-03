@@ -6,19 +6,17 @@
     "eas-build-post-install": "cd ../../ && node tools/scripts/eas-build-post-install.mjs . apps/mobile"
   },
   "dependencies": {
-    "@expo/metro-config": "*",
+    "@expo/metro-config": "~54.0.2",
     "@testing-library/react-native": "*",
-    "expo": "*",
-    "expo-splash-screen": "*",
-    "expo-status-bar": "*",
-    "expo-system-ui": "*",
-    "jest-expo": "*",
-    "metro-config": "*",
-    "metro-resolver": "*",
-    "react": "*",
-    "react-native": "*",
-    "react-native-svg": "*",
-    "react-native-svg-transformer": "*",
-    "react-native-web": "*"
+    "expo": "^54.0.25",
+    "expo-splash-screen": "^31.0.11",
+    "expo-status-bar": "^3.0.8",
+    "expo-system-ui": "^6.0.8",
+    "jest-expo": "^54.0.13",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-svg": "15.12.1",
+    "react-native-svg-transformer": "~1.5.1",
+    "react-native-web": "^0.21.0"
   }
 }
