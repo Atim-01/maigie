@@ -335,7 +335,7 @@ async def get_oauth_providers():
     """
     List available providers.
     """
-    return {"providers": ["google", "github"]}
+    return {"providers": ["google"]}  # TODO: Add "github" when GitHub OAuth is enabled
 
 
 @router.get("/oauth/{provider}/authorize", response_model=OAuthAuthorizeResponse)
