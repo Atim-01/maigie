@@ -90,8 +90,9 @@ class Settings(BaseSettings):
     # --- OAuth Providers (Placeholders) ---
     OAUTH_GOOGLE_CLIENT_ID: str | None = None
     OAUTH_GOOGLE_CLIENT_SECRET: str | None = None
-    OAUTH_GITHUB_CLIENT_ID: str | None = None
-    OAUTH_GITHUB_CLIENT_SECRET: str | None = None
+    # TODO: Enable GitHub OAuth provider in the future
+    # OAUTH_GITHUB_CLIENT_ID: str | None = None
+    # OAUTH_GITHUB_CLIENT_SECRET: str | None = None
     # Redirect URI used by your teammate's OAuth logic
     OAUTH_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/oauth/callback"
 
