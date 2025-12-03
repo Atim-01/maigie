@@ -153,7 +153,7 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
 def configure_logging() -> None:
     """
     Configure logging for the application.
-    
+
     In development: Uses colored, human-readable format
     In production: Uses structured JSON format
 
@@ -205,7 +205,7 @@ def configure_logging() -> None:
                 except Exception:
                     # Last resort: write a safe ASCII message
                     self.handleError(record)
-    
+
     console_handler = SafeStreamHandler(sys.stdout)
     console_handler.setLevel(log_level)
 
