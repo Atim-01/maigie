@@ -476,11 +476,12 @@ async def oauth_authorize(
     # Normalize provider name to lowercase for consistent redirect URIs
     provider = provider.lower()
 
-    # Build the callback redirect URI
-    # Use helper function to respect proxy headers (Cloudflare Tunnel, etc.)
-    base_url = get_base_url_from_request(request)
-    callback_path = f"/api/v1/auth/oauth/{provider}/callback"
-    redirect_uri = f"{base_url}{callback_path}"
+    # TEMPORARY: Hardcoded redirect URI for testing - REMOVE AFTER TESTING
+    redirect_uri = "https://pr-51-api-preview.maigie.com/api/v1/auth/oauth/google/callback"
+    # Original code (commented out):
+    # base_url = get_base_url_from_request(request)
+    # callback_path = f"/api/v1/auth/oauth/{provider}/callback"
+    # redirect_uri = f"{base_url}{callback_path}"
 
     # Log the redirect URI for debugging (helps verify Google Cloud Console config)
     logger.info(
@@ -534,11 +535,12 @@ async def oauth_callback(provider: str, code: str, state: str, request: Request,
     # Normalize provider name to lowercase (must match authorization request)
     provider = provider.lower()
 
-    # Build redirect URI - must match exactly what was used in authorization request
-    # Use helper function to respect proxy headers (Cloudflare Tunnel, etc.)
-    base_url = get_base_url_from_request(request)
-    callback_path = f"/api/v1/auth/oauth/{provider}/callback"
-    redirect_uri = f"{base_url}{callback_path}"
+    # TEMPORARY: Hardcoded redirect URI for testing - REMOVE AFTER TESTING
+    redirect_uri = "https://pr-51-api-preview.maigie.com/api/v1/auth/oauth/google/callback"
+    # Original code (commented out):
+    # base_url = get_base_url_from_request(request)
+    # callback_path = f"/api/v1/auth/oauth/{provider}/callback"
+    # redirect_uri = f"{base_url}{callback_path}"
 
     logger.info(
         "OAuth callback received",
