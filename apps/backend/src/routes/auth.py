@@ -50,17 +50,10 @@ from src.models.auth import (
 )
 from src.services.user_service import OAuthUserInfo, get_or_create_oauth_user
 
-# DELETE THE DUPLICATE LINE THAT WAS HERE (from src.services.email import ...)
-
 # Get logger for this module
 logger = logging.getLogger(__name__)
 
-# Get logger for this module
-logger = logging.getLogger(__name__)
-
-router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
-router = APIRouter()
-# ... Rest of your file ...
+router = APIRouter(tags=["auth"])
 # ==========================================
 #  REQUEST MODELS
 # ==========================================
@@ -364,6 +357,17 @@ async def oauth_authorize(
     callback_path = f"/api/v1/auth/oauth/{provider}/callback"
     redirect_uri = f"{base_url}{callback_path}"
 
+    # Log the redirect URI for debugging (helps verify Google Cloud Console config)
+    logger.info(
+        "OAuth authorization initiated",
+        extra={
+            "provider": provider,
+            "redirect_uri": redirect_uri,
+            "base_url": base_url,
+            "callback_path": callback_path,
+        },
+    )
+
     try:
         # Get the authorization URL from the provider
         authorization_url = await oauth_provider.get_authorization_url(
@@ -406,6 +410,16 @@ async def oauth_callback(provider: str, code: str, state: str, request: Request,
     base_url = str(request.base_url).rstrip("/")
     callback_path = f"/api/v1/auth/oauth/{provider}/callback"
     redirect_uri = f"{base_url}{callback_path}"
+
+    logger.info(
+        "OAuth callback received",
+        extra={
+            "provider": provider,
+            "redirect_uri": redirect_uri,
+            "has_code": bool(code),
+            "has_state": bool(state),
+        },
+    )
 
     try:
         # Exchange authorization code for access token
