@@ -54,6 +54,39 @@ from src.services.user_service import OAuthUserInfo, get_or_create_oauth_user
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["auth"])
+
+
+def get_base_url_from_request(request: Request) -> str:
+    """
+    Get the base URL from request, respecting proxy headers.
+    
+    When behind a reverse proxy (Cloudflare Tunnel, Nginx, etc.), the proxy
+    sets X-Forwarded-Proto and X-Forwarded-Host headers. This function
+    uses those headers to construct the correct external URL (HTTPS) instead
+    of the internal URL (HTTP).
+    
+    Args:
+        request: FastAPI Request object
+        
+    Returns:
+        Base URL string (e.g., "https://api.maigie.com" or "http://localhost:8000")
+    """
+    # Check for proxy headers (Cloudflare Tunnel, Nginx, etc.)
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", "http")
+    forwarded_host = request.headers.get("X-Forwarded-Host")
+    
+    if forwarded_host:
+        # Use forwarded host and protocol from proxy
+        # Remove port if present (Cloudflare Tunnel doesn't include port)
+        host = forwarded_host.split(":")[0] if ":" in forwarded_host else forwarded_host
+        base_url = f"{forwarded_proto}://{host}".rstrip("/")
+    else:
+        # Fallback to request.base_url (for local development without proxy)
+        base_url = str(request.base_url).rstrip("/")
+    
+    return base_url
+
+
 # ==========================================
 #  REQUEST MODELS
 # ==========================================
@@ -352,8 +385,12 @@ async def oauth_authorize(
     # Generate a secure state token for CSRF protection
     state = secrets.token_urlsafe(32)
 
+    # Normalize provider name to lowercase for consistent redirect URIs
+    provider = provider.lower()
+
     # Build the callback redirect URI
-    base_url = str(request.base_url).rstrip("/")
+    # Use helper function to respect proxy headers (Cloudflare Tunnel, etc.)
+    base_url = get_base_url_from_request(request)
     callback_path = f"/api/v1/auth/oauth/{provider}/callback"
     redirect_uri = f"{base_url}{callback_path}"
 
@@ -406,8 +443,12 @@ async def oauth_callback(provider: str, code: str, state: str, request: Request,
             detail=str(e),
         )
 
+    # Normalize provider name to lowercase (must match authorization request)
+    provider = provider.lower()
+
     # Build redirect URI - must match exactly what was used in authorization request
-    base_url = str(request.base_url).rstrip("/")
+    # Use helper function to respect proxy headers (Cloudflare Tunnel, etc.)
+    base_url = get_base_url_from_request(request)
     callback_path = f"/api/v1/auth/oauth/{provider}/callback"
     redirect_uri = f"{base_url}{callback_path}"
 
