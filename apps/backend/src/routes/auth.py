@@ -59,22 +59,22 @@ router = APIRouter(tags=["auth"])
 def get_base_url_from_request(request: Request) -> str:
     """
     Get the base URL from request, respecting proxy headers.
-    
+
     When behind a reverse proxy (Cloudflare Tunnel, Nginx, etc.), the proxy
     sets X-Forwarded-Proto and X-Forwarded-Host headers. This function
     uses those headers to construct the correct external URL (HTTPS) instead
     of the internal URL (HTTP).
-    
+
     Args:
         request: FastAPI Request object
-        
+
     Returns:
         Base URL string (e.g., "https://api.maigie.com" or "http://localhost:8000")
     """
     # Check for proxy headers (Cloudflare Tunnel, Nginx, etc.)
     forwarded_proto = request.headers.get("X-Forwarded-Proto", "http")
     forwarded_host = request.headers.get("X-Forwarded-Host")
-    
+
     if forwarded_host:
         # Use forwarded host and protocol from proxy
         # Remove port if present (Cloudflare Tunnel doesn't include port)
@@ -83,7 +83,7 @@ def get_base_url_from_request(request: Request) -> str:
     else:
         # Fallback to request.base_url (for local development without proxy)
         base_url = str(request.base_url).rstrip("/")
-    
+
     return base_url
 
 
