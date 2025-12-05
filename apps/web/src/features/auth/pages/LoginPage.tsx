@@ -3,7 +3,7 @@
  */
 
 import { useState, FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthForm } from '../components/AuthForm';
 import { AuthLogo } from '../components/AuthLogo';
 import { AuthInput } from '../components/AuthInput';
@@ -15,6 +15,7 @@ import { useLogin } from '../hooks/useLogin';
 import { useGoogleOAuth } from '../hooks/useGoogleOAuth';
 
 export function LoginPage() {
+  const navigate = useNavigate();
   const loginMutation = useLogin();
   const { handleGoogleAuth, isLoading: isGoogleLoading } = useGoogleOAuth();
 
@@ -55,12 +56,34 @@ export function LoginPage() {
         password: formData.password,
       });
     } catch (error: unknown) {
-      const errorMessage = error && typeof error === 'object' && 'response' in error
-        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
-        : undefined;
-      setErrors({
-        submit: errorMessage || 'Invalid email or password. Please try again.',
-      });
+      if (error && typeof error === 'object' && 'response' in error) {
+        const errorResponse = error as { 
+          response?: { 
+            status?: number;
+            data?: { detail?: string } 
+          } 
+        };
+        const status = errorResponse.response?.status;
+        const errorMessage = errorResponse.response?.data?.detail;
+        
+        // Check if it's a 400 error with account inactive message
+        if (status === 400 && errorMessage === 'Account inactive. Please verify your email.') {
+          // Store email for OTP verification page
+          localStorage.setItem('signup_email', formData.email);
+          // Set flag to auto-trigger resend on OTP page
+          localStorage.setItem('auto_resend_otp', 'true');
+          navigate('/verify-otp');
+          return;
+        }
+        
+        setErrors({
+          submit: errorMessage || 'Invalid email or password. Please try again.',
+        });
+      } else {
+        setErrors({
+          submit: 'Invalid email or password. Please try again.',
+        });
+      }
     }
   };
 

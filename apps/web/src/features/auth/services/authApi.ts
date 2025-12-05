@@ -76,32 +76,33 @@ export const authApi = {
   },
 
   /**
-   * Verify OTP (stubbed - will be implemented when backend is ready)
+   * Verify OTP code to activate account
    */
   verifyOTP: async (data: OTPRequest): Promise<{ message: string; verified: boolean }> => {
-    // Stub implementation - mock success for now
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          message: 'OTP verified successfully',
-          verified: true,
-        });
-      }, 1000);
-    });
+    const response = await apiClient.post<{ message: string }>(
+      '/auth/verify-email',
+      {
+        email: data.email,
+        code: data.code,
+      }
+    );
+    return {
+      message: response.data.message,
+      verified: true,
+    };
   },
 
   /**
-   * Resend OTP (stubbed - will be implemented when backend is ready)
+   * Resend OTP code to user's email
    */
   resendOTP: async (email: string): Promise<{ message: string }> => {
-    // Stub implementation - mock success for now
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          message: 'OTP sent successfully',
-        });
-      }, 1000);
-    });
+    const response = await apiClient.post<{ message: string }>(
+      '/auth/resend-otp',
+      {
+        email,
+      }
+    );
+    return response.data;
   },
 
   /**

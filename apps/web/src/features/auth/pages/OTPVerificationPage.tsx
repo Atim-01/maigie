@@ -2,7 +2,7 @@
  * OTP Verification page component
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthForm } from '../components/AuthForm';
 import { AuthLogo } from '../components/AuthLogo';
@@ -18,14 +18,45 @@ export function OTPVerificationPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [resendCooldown, setResendCooldown] = useState(0);
   const [isResending, setIsResending] = useState(false);
+  const hasAutoResent = useRef(false);
+
+  const handleResend = useCallback(async (emailToUse?: string) => {
+    const emailForResend = emailToUse || email;
+    if (resendCooldown > 0 || !emailForResend) return;
+
+    setIsResending(true);
+    try {
+      await authApi.resendOTP(emailForResend);
+      setResendCooldown(60); // 60 second cooldown
+      setErrors({});
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setErrors({
+        resend: errorMessage || 'Failed to resend code. Please try again.',
+      });
+    } finally {
+      setIsResending(false);
+    }
+  }, [email, resendCooldown]);
 
   useEffect(() => {
     // Get email from localStorage or state (set during signup)
     const signupEmail = localStorage.getItem('signup_email');
     if (signupEmail) {
       setEmail(signupEmail);
+      
+      // Auto-trigger resend if coming from login (inactive account) - only once
+      const shouldAutoResend = localStorage.getItem('auto_resend_otp') === 'true';
+      if (shouldAutoResend && !hasAutoResent.current) {
+        hasAutoResent.current = true;
+        localStorage.removeItem('auto_resend_otp');
+        // Trigger resend with the email directly (don't wait for state update)
+        handleResend(signupEmail);
+      }
     }
-  }, []);
+  }, [handleResend]);
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -50,29 +81,16 @@ export function OTPVerificationPage() {
         email,
         code: otp,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
       setErrors({
-        otp: error?.response?.data?.detail || 'Invalid code. Please try again.',
+        otp: errorMessage || 'Invalid code. Please try again.',
       });
     }
   };
 
-  const handleResend = async () => {
-    if (resendCooldown > 0 || !email) return;
-
-    setIsResending(true);
-    try {
-      await authApi.resendOTP(email);
-      setResendCooldown(60); // 60 second cooldown
-      setErrors({});
-    } catch (error: any) {
-      setErrors({
-        resend: 'Failed to resend code. Please try again.',
-      });
-    } finally {
-      setIsResending(false);
-    }
-  };
 
   return (
     <AuthForm>
@@ -110,7 +128,7 @@ export function OTPVerificationPage() {
 
         <AuthButton
           type="button"
-          onClick={handleResend}
+          onClick={() => handleResend()}
           loading={isResending}
           variant="secondary"
           disabled={resendCooldown > 0}
