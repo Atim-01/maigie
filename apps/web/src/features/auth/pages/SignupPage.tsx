@@ -12,10 +12,12 @@ import { AuthButton } from '../components/AuthButton';
 import { GoogleOAuthButton } from '../components/GoogleOAuthButton';
 import { AuthDivider } from '../components/AuthDivider';
 import { useSignup } from '../hooks/useSignup';
+import { useGoogleOAuth } from '../hooks/useGoogleOAuth';
 
 export function SignupPage() {
   const navigate = useNavigate();
   const signupMutation = useSignup();
+  const { handleGoogleAuth, isLoading: isGoogleLoading } = useGoogleOAuth();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -63,16 +65,27 @@ export function SignupPage() {
         password: formData.password,
         name: formData.name,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
       setErrors({
-        submit: error?.response?.data?.detail || 'An error occurred. Please try again.',
+        submit: errorMessage || 'An error occurred. Please try again.',
       });
     }
   };
 
-  const handleGoogleSignup = () => {
-    // TODO: Implement Google OAuth
-    console.log('Google signup clicked');
+  const handleGoogleSignup = async () => {
+    try {
+      await handleGoogleAuth();
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      setErrors({
+        submit: errorMessage || 'Google signup failed. Please try again.',
+      });
+    }
   };
 
   return (
@@ -139,7 +152,12 @@ export function SignupPage() {
         </div>
 
         <div className="mt-4">
-          <GoogleOAuthButton onClick={handleGoogleSignup} />
+          <GoogleOAuthButton
+            onClick={handleGoogleSignup}
+            loading={isGoogleLoading}
+            disabled={signupMutation.isPending || isGoogleLoading}
+            label="Sign up with Google"
+          />
         </div>
       </div>
 

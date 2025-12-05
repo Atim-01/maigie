@@ -13,7 +13,7 @@ import type {
   OTPRequest,
 } from '../types/auth.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pr-51-api-preview.maigie.com/api/v1';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

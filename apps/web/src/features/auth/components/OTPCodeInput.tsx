@@ -2,7 +2,7 @@
  * 6-digit OTP input with auto-advance functionality
  */
 
-import { useRef, useState, KeyboardEvent, ChangeEvent } from 'react';
+import { useRef, useState, KeyboardEvent, ChangeEvent, ClipboardEvent } from 'react';
 import { cn } from '../../../lib/utils';
 
 interface OTPCodeInputProps {
@@ -59,13 +59,36 @@ export function OTPCodeInput({ value, onChange, error }: OTPCodeInputProps) {
     setFocusedIndex(index);
   };
 
+  const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text');
+    
+    // Extract only digits from pasted data
+    const digitsOnly = pastedData.replace(/[^0-9]/g, '');
+    
+    if (digitsOnly.length === 0) {
+      return;
+    }
+
+    // Take only the first 6 digits
+    const otpValue = digitsOnly.slice(0, 6);
+    onChange(otpValue);
+
+    // Focus the next empty input or the last input if all are filled
+    const nextIndex = Math.min(otpValue.length, 5);
+    setTimeout(() => {
+      inputRefs.current[nextIndex]?.focus();
+      setFocusedIndex(nextIndex);
+    }, 0);
+  };
+
   return (
     <div className="w-full">
       <div className="flex gap-2 justify-center">
         {Array.from({ length: 6 }).map((_, index) => (
           <input
             key={index}
-            ref={(el) => (inputRefs.current[index] = el)}
+            ref={(el) => { inputRefs.current[index] = el; }}
             type="text"
             inputMode="numeric"
             maxLength={1}
@@ -73,6 +96,7 @@ export function OTPCodeInput({ value, onChange, error }: OTPCodeInputProps) {
             onChange={(e) => handleChange(index, e)}
             onKeyDown={(e) => handleKeyDown(index, e)}
             onFocus={() => handleFocus(index)}
+            onPaste={handlePaste}
             className={cn(
               'w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-semibold',
               'rounded-lg border-2 transition-all duration-200',
