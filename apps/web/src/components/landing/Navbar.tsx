@@ -35,13 +35,13 @@ export function Navbar() {
             <img src="/assets/logo.png" alt="Maigie Logo" className="h-8 w-auto" />
             <span className="ml-2 text-2xl font-bold text-primary hidden">maigie</span>
           </div>
-          
+
           <div className="hidden md:flex items-center space-x-8">
             <a href="#features" className="text-gray-600 hover:text-primary transition-colors">Features</a>
             <a href="#pricing" className="text-gray-600 hover:text-primary transition-colors">Pricing</a>
             <a href="#testimonials" className="text-gray-600 hover:text-primary transition-colors">Testimonials</a>
-            <button 
-              onClick={() => navigate('/login')} 
+            <button
+              onClick={() => navigate('/login')}
               className="text-gray-600 hover:text-primary font-medium px-3 py-2 transition-colors"
             >
               Login
@@ -61,7 +61,7 @@ export function Navbar() {
 
       {/* Mobile menu */}
       {isOpen && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
@@ -72,7 +72,7 @@ export function Navbar() {
             <a href="#pricing" className="block px-3 py-2 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-md">Pricing</a>
             <a href="#testimonials" className="block px-3 py-2 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-md">Testimonials</a>
             <div className="pt-4 space-y-2">
-              <button 
+              <button
                 onClick={() => {
                   navigate('/login');
                   setIsOpen(false);
@@ -81,11 +81,11 @@ export function Navbar() {
               >
                 Login
               </button>
-              <button 
+              <button
                 onClick={() => {
                   navigate('/signup');
                   setIsOpen(false);
-                }} 
+                }}
                 className="w-full bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary/90 shadow-sm"
               >
                 Start for Free
