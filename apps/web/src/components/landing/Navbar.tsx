@@ -40,10 +40,13 @@ export function Navbar() {
             <a href="#features" className="text-gray-600 hover:text-primary transition-colors">Features</a>
             <a href="#pricing" className="text-gray-600 hover:text-primary transition-colors">Pricing</a>
             <a href="#testimonials" className="text-gray-600 hover:text-primary transition-colors">Testimonials</a>
-            <button className="text-gray-600 hover:text-primary font-medium px-3 py-2 transition-colors">
+            <button 
+              onClick={() => navigate('/login')} 
+              className="text-gray-600 hover:text-primary font-medium px-3 py-2 transition-colors"
+            >
               Login
             </button>
-            <button onClick={() => navigate('/waitlist')} className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-all shadow-md hover:shadow-lg">
+            <button onClick={() => navigate('/signup')} className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-all shadow-md hover:shadow-lg">
               Start for Free
             </button>
           </div>
@@ -69,10 +72,22 @@ export function Navbar() {
             <a href="#pricing" className="block px-3 py-2 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-md">Pricing</a>
             <a href="#testimonials" className="block px-3 py-2 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-md">Testimonials</a>
             <div className="pt-4 space-y-2">
-              <button className="w-full text-left px-3 py-2 text-gray-600 hover:text-primary font-medium">
+              <button 
+                onClick={() => {
+                  navigate('/login');
+                  setIsOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 text-gray-600 hover:text-primary font-medium"
+              >
                 Login
               </button>
-              <button onClick={() => navigate('/waitlist')} className="w-full bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary/90 shadow-sm">
+              <button 
+                onClick={() => {
+                  navigate('/signup');
+                  setIsOpen(false);
+                }} 
+                className="w-full bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary/90 shadow-sm"
+              >
                 Start for Free
               </button>
             </div>

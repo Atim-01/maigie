@@ -25,6 +25,11 @@ import { ContactPage } from '../pages/ContactPage';
 import { PrivacyPage } from '../pages/PrivacyPage';
 import { TermsPage } from '../pages/TermsPage';
 import { CookieNotice } from '../components/layout/CookieNotice';
+import { SignupPage } from '../features/auth/pages/SignupPage';
+import { LoginPage } from '../features/auth/pages/LoginPage';
+import { OTPVerificationPage } from '../features/auth/pages/OTPVerificationPage';
+import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 import '../styles.css';
 
 export function App() {
@@ -37,6 +42,12 @@ export function App() {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        {/* Auth routes */}
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/verify-otp" element={<OTPVerificationPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
       <CookieNotice />
     </Router>
