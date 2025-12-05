@@ -48,6 +48,9 @@ export function useGoogleOAuth() {
       // Step 3: Exchange code for access token
       const tokenResponse = await authApi.oauthCallback(provider, code, state);
       
+      // Save token to localStorage first so axios interceptor can use it
+      localStorage.setItem('access_token', tokenResponse.access_token);
+      
       // Get user data and store auth state
       const user = await authApi.getCurrentUser();
       login(tokenResponse, user);
@@ -56,7 +59,7 @@ export function useGoogleOAuth() {
       sessionStorage.removeItem('oauth_state');
       sessionStorage.removeItem('oauth_provider');
       
-      navigate('/dashboard'); // TODO: Update to actual dashboard route
+      navigate('/dashboard');
     } catch (error: any) {
       console.error('OAuth callback error:', error);
       setIsLoading(false);

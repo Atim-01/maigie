@@ -60,6 +60,8 @@ export function SignupPage() {
     try {
       // Store email for OTP verification
       localStorage.setItem('signup_email', formData.email);
+      // Store password temporarily for auto-login after OTP verification
+      sessionStorage.setItem('temp_password', formData.password);
       await signupMutation.mutateAsync({
         email: formData.email,
         password: formData.password,

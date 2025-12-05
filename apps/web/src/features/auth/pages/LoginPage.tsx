@@ -70,6 +70,8 @@ export function LoginPage() {
         if (status === 400 && errorMessage === 'Account inactive. Please verify your email.') {
           // Store email for OTP verification page
           localStorage.setItem('signup_email', formData.email);
+          // Store password temporarily for auto-login after OTP verification
+          sessionStorage.setItem('temp_password', formData.password);
           // Set flag to auto-trigger resend on OTP page
           localStorage.setItem('auto_resend_otp', 'true');
           navigate('/verify-otp');
