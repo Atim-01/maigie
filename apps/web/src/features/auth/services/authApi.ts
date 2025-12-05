@@ -103,5 +103,29 @@ export const authApi = {
       }, 1000);
     });
   },
+
+  /**
+   * Get OAuth authorization URL
+   */
+  oauthAuthorize: async (provider: string, redirectUri?: string): Promise<{ authorization_url: string; state: string; provider: string }> => {
+    const params = redirectUri ? `?redirect_uri=${encodeURIComponent(redirectUri)}` : '';
+    const response = await apiClient.get<{ authorization_url: string; state: string; provider: string }>(
+      `/auth/oauth/${provider}/authorize${params}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Exchange OAuth code for access token
+   */
+  oauthCallback: async (provider: string, code: string, state: string): Promise<TokenResponse> => {
+    const response = await apiClient.get<TokenResponse>(
+      `/auth/oauth/${provider}/callback`,
+      {
+        params: { code, state },
+      }
+    );
+    return response.data;
+  },
 };
 

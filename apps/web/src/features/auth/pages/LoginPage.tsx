@@ -9,10 +9,14 @@ import { AuthLogo } from '../components/AuthLogo';
 import { AuthInput } from '../components/AuthInput';
 import { PasswordInput } from '../components/PasswordInput';
 import { AuthButton } from '../components/AuthButton';
+import { GoogleOAuthButton } from '../components/GoogleOAuthButton';
+import { AuthDivider } from '../components/AuthDivider';
 import { useLogin } from '../hooks/useLogin';
+import { useGoogleOAuth } from '../hooks/useGoogleOAuth';
 
 export function LoginPage() {
   const loginMutation = useLogin();
+  const { handleGoogleAuth, isLoading: isGoogleLoading } = useGoogleOAuth();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -50,11 +54,12 @@ export function LoginPage() {
         email: formData.email,
         password: formData.password,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
       setErrors({
-        submit:
-          error?.response?.data?.detail ||
-          'Invalid email or password. Please try again.',
+        submit: errorMessage || 'Invalid email or password. Please try again.',
       });
     }
   };
@@ -117,6 +122,19 @@ export function LoginPage() {
           Log in
         </AuthButton>
         </form>
+
+        <div className="mt-6">
+          <AuthDivider />
+        </div>
+
+        <div className="mt-6">
+          <GoogleOAuthButton
+            onClick={handleGoogleAuth}
+            loading={isGoogleLoading}
+            disabled={loginMutation.isPending || isGoogleLoading}
+            label="Sign in with Google"
+          />
+        </div>
 
         <p className="mt-auto md:mt-6 text-center text-sm text-gray-600">
           Don't have an account?{' '}

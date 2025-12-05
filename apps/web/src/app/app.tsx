@@ -30,6 +30,7 @@ import { LoginPage } from '../features/auth/pages/LoginPage';
 import { OTPVerificationPage } from '../features/auth/pages/OTPVerificationPage';
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
+import { OAuthCallbackPage } from '../features/auth/pages/OAuthCallbackPage';
 import '../styles.css';
 
 export function App() {
@@ -45,6 +46,7 @@ export function App() {
         {/* Auth routes */}
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/oauth/callback" element={<OAuthCallbackPage />} />
         <Route path="/verify-otp" element={<OTPVerificationPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
