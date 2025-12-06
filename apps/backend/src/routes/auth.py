@@ -464,7 +464,7 @@ async def oauth_authorize(
 ):
     """
     Initiate OAuth flow.
-    
+
     Args:
         provider: OAuth provider name (e.g., "google")
         redirect: If True, perform server-side redirect instead of returning JSON
@@ -655,7 +655,7 @@ async def oauth_callback(provider: str, code: str, state: str, request: Request,
         # Handle HTTP errors from OAuth provider (e.g., Google)
         error_message = "Unknown OAuth error"
         error_data = {}
-        
+
         try:
             # Try to extract error details from response
             if hasattr(e, "response") and e.response is not None:
@@ -663,14 +663,16 @@ async def oauth_callback(provider: str, code: str, state: str, request: Request,
                 if "application/json" in content_type:
                     try:
                         error_data = e.response.json()
-                        error_message = error_data.get("error_description") or error_data.get("error") or str(e)
+                        error_message = (
+                            error_data.get("error_description") or error_data.get("error") or str(e)
+                        )
                     except Exception:
                         error_data = {"error": e.response.text}
                         error_message = e.response.text
                 else:
                     error_data = {"error": e.response.text}
                     error_message = e.response.text
-                
+
                 logger.error(
                     "OAuth HTTP error from provider",
                     extra={
@@ -686,7 +688,7 @@ async def oauth_callback(provider: str, code: str, state: str, request: Request,
                 extra={"error": str(parse_error), "original_error": str(e)},
             )
             error_message = str(e)
-        
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"OAuth provider error: {error_message}",
@@ -707,7 +709,7 @@ async def oauth_callback(provider: str, code: str, state: str, request: Request,
             },
             exc_info=True,
         )
-        
+
         error_detail = f"{type(e).__name__}: {str(e)}"
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

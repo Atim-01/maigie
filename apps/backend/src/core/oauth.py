@@ -91,7 +91,7 @@ class GoogleOAuthProvider:
                 "redirect_uri": redirect_uri,
                 "grant_type": "authorization_code",
             }
-            
+
             logger.info(
                 "Google OAuth token request",
                 extra={
@@ -100,13 +100,13 @@ class GoogleOAuthProvider:
                     "client_id": self.client_id[:10] + "..." if self.client_id else None,
                 },
             )
-            
+
             response = await http_client.post(
                 self.access_token_url,
                 data=token_data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
-            
+
             # Log error details before raising exception
             if response.status_code != 200:
                 try:
@@ -129,7 +129,7 @@ class GoogleOAuthProvider:
                             "status_code": response.status_code,
                         },
                     )
-            
+
             response.raise_for_status()
             token_response = response.json()
 
