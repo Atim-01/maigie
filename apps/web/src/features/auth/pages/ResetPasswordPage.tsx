@@ -3,7 +3,7 @@
  */
 
 import { useState, FormEvent, useEffect } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthForm } from '../components/AuthForm';
 import { AuthLogo } from '../components/AuthLogo';
 import { PasswordInput } from '../components/PasswordInput';
@@ -11,11 +11,11 @@ import { AuthButton } from '../components/AuthButton';
 import { useResetPassword } from '../hooks/useResetPassword';
 
 export function ResetPasswordPage() {
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const resetPasswordMutation = useResetPassword();
 
-  const token = searchParams.get('token');
+  const { email, code } = (location.state as { email?: string; code?: string }) || {};
 
   const [formData, setFormData] = useState({
     newPassword: '',
@@ -25,10 +25,10 @@ export function ResetPasswordPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!token) {
+    if (!email || !code) {
       navigate('/forgot-password');
     }
-  }, [token, navigate]);
+  }, [email, code, navigate]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -52,8 +52,8 @@ export function ResetPasswordPage() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!token) {
-      setErrors({ submit: 'Invalid reset token. Please request a new one.' });
+    if (!email || !code) {
+      setErrors({ submit: 'Invalid reset code. Please request a new one.' });
       return;
     }
 
@@ -63,20 +63,22 @@ export function ResetPasswordPage() {
 
     try {
       await resetPasswordMutation.mutateAsync({
-        token,
+        email,
+        code,
         newPassword: formData.newPassword,
         confirmPassword: formData.confirmPassword,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
       setErrors({
-        submit:
-          error?.response?.data?.detail ||
-          'Failed to reset password. Please try again.',
+        submit: errorMessage || 'Failed to reset password. Please try again.',
       });
     }
   };
 
-  if (!token) {
+  if (!email || !code) {
     return null;
   }
 

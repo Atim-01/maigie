@@ -11,6 +11,7 @@ import type {
   PasswordResetRequest,
   PasswordReset,
   OTPRequest,
+  VerifyResetCodeRequest,
 } from '../types/auth.types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pr-51-api-preview.maigie.com/api/v1';
@@ -57,20 +58,29 @@ export const authApi = {
   },
 
   /**
-   * Request password reset
+   * Request password reset code
    */
   forgotPassword: async (data: PasswordResetRequest): Promise<{ message: string }> => {
-    const response = await apiClient.post<{ message: string }>('/auth/reset-password', data);
+    const response = await apiClient.post<{ message: string }>('/auth/forgot-password', data);
     return response.data;
   },
 
   /**
-   * Reset password with token
+   * Verify reset code
+   */
+  verifyResetCode: async (data: VerifyResetCodeRequest): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>('/auth/verify-reset-code', data);
+    return response.data;
+  },
+
+  /**
+   * Reset password with code
    */
   resetPassword: async (data: PasswordReset): Promise<{ message: string }> => {
     const response = await apiClient.post<{ message: string }>('/auth/reset-password', {
-      token: data.token,
-      password: data.newPassword,
+      email: data.email,
+      code: data.code,
+      new_password: data.newPassword,
     });
     return response.data;
   },

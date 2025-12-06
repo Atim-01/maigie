@@ -36,9 +36,15 @@ export interface PasswordResetRequest {
 }
 
 export interface PasswordReset {
-  token: string;
+  email: string;
+  code: string;
   newPassword: string;
   confirmPassword: string;
+}
+
+export interface VerifyResetCodeRequest {
+  email: string;
+  code: string;
 }
 
 export interface OTPRequest {
