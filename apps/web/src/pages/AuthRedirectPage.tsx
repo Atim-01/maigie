@@ -37,7 +37,7 @@ export function AuthRedirectPage() {
     if (isMobileBrowser) {
       // Get all query parameters and build the deep link URL
       const queryString = searchParams.toString();
-      const deepLink = `maigie://oauth-callback${queryString ? `?${queryString}` : ''}`;
+      const deepLink = `${import.meta.env.VITE_MOBILE_URL}${queryString ? `?${queryString}` : ''}`;
       
       // Redirect immediately to close the browser
       window.location.replace(deepLink);
