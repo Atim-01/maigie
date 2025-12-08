@@ -144,6 +144,8 @@ jobs:
           SMTP_PORT: ${{secrets.SMTP_PORT}}
           SMTP_USER: ${{secrets.SMTP_USER}}
           SMTP_PASSWORD: ${{secrets.SMTP_PASSWORD}}
+          BREVO_API_KEY: ${{secrets.BREVO_API_KEY}}
+          BREVO_ENABLED: ${{secrets.BREVO_ENABLED}}
         run: |
           chmod +x scripts/generate-env-from-secrets.sh
           chmod +x scripts/load-all-secrets.sh
@@ -267,6 +269,8 @@ jobs:
             export SMTP_PORT="${{secrets.SMTP_PORT}}"
             export SMTP_USER="${{secrets.SMTP_USER}}"
             export SMTP_PASSWORD="${{secrets.SMTP_PASSWORD}}"
+            export BREVO_API_KEY="${{secrets.BREVO_API_KEY}}"
+            export BREVO_ENABLED="${{secrets.BREVO_ENABLED}}"
             
             cd /opt/maigie/previews
             
@@ -751,6 +755,8 @@ jobs:
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_ENABLED: ${{ secrets.BREVO_ENABLED }}
         run: |
           chmod +x scripts/generate-env-from-secrets.sh
           ./scripts/generate-env-from-secrets.sh .env .env.example
@@ -966,6 +972,8 @@ jobs:
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_ENABLED: ${{ secrets.BREVO_ENABLED }}
         run: |
           chmod +x scripts/generate-env-from-secrets.sh
           ./scripts/generate-env-from-secrets.sh .env .env.example
