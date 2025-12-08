@@ -122,6 +122,15 @@ class Settings(BaseSettings):
     SENTRY_DSN: str | None = None
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1
 
+    # WebSocket
+    WEBSOCKET_HEARTBEAT_INTERVAL: int = 30  # seconds
+    WEBSOCKET_HEARTBEAT_TIMEOUT: int = 60  # seconds
+    WEBSOCKET_MAX_RECONNECT_ATTEMPTS: int = 5
+
+    # Brevo (formerly Sendinblue) CRM Integration
+    BREVO_API_KEY: str = ""
+    BREVO_ENABLED: bool = True
+
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).parent.parent / ".env"),
         env_file_encoding="utf-8",
