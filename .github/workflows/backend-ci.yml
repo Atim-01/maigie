@@ -1019,10 +1019,17 @@ jobs:
             echo "Warning: Could not add host key, but continuing since StrictHostKeyChecking=no is used"
           fi
 
+      - name: Upload env template and generator for staging
+        run: |
+          scp -i ~/.ssh/vps_key -o StrictHostKeyChecking=no \
+            .env.example \
+            scripts/generate-env-from-secrets.sh \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/maigie/staging/
+
       - name: Deploy to Contabo VPS
         run: |
           scp -i ~/.ssh/vps_key -o StrictHostKeyChecking=no \
-            staging-image.tar.gz .env \
+            staging-image.tar.gz \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/
 
       - name: Load Image and Deploy Staging
@@ -1032,35 +1039,92 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            # Set ALL GitHub secrets as environment variables
+            export SENTRY_DSN="${{ secrets.SENTRY_DSN }}"
+            export SECRET_KEY="${{ secrets.SECRET_KEY }}"
+            export DATABASE_URL="${{ secrets.STAGING_DATABASE_URL }}"
+            export REDIS_URL="${{ secrets.REDIS_URL }}"
+            export OAUTH_GOOGLE_CLIENT_ID="${{ secrets.OAUTH_GOOGLE_CLIENT_ID }}"
+            export OAUTH_GOOGLE_CLIENT_SECRET="${{ secrets.OAUTH_GOOGLE_CLIENT_SECRET }}"
+            export OAUTH_GITHUB_CLIENT_ID="${{ secrets.OAUTH_GITHUB_CLIENT_ID }}"
+            export OAUTH_GITHUB_CLIENT_SECRET="${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}"
+            export OAUTH_REDIRECT_URI="${{ secrets.OAUTH_REDIRECT_URI }}"
+            export CELERY_BROKER_URL="${{ secrets.CELERY_BROKER_URL }}"
+            export CELERY_RESULT_BACKEND="${{ secrets.CELERY_RESULT_BACKEND }}"
+            export FRONTEND_BASE_URL="${{ secrets.FRONTEND_BASE_URL }}"
+            export APP_NAME="${{ secrets.APP_NAME }}"
+            export DEBUG="${{ secrets.DEBUG }}"
+            export ALGORITHM="${{ secrets.ALGORITHM }}"
+            export ACCESS_TOKEN_EXPIRE_MINUTES="${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}"
+            export REFRESH_TOKEN_EXPIRE_DAYS="${{ secrets.REFRESH_TOKEN_EXPIRE_DAYS }}"
+            export CORS_ORIGINS="${{ secrets.CORS_ORIGINS }}"
+            export ALLOWED_HOSTS="${{ secrets.ALLOWED_HOSTS }}"
+            export REDIS_KEY_PREFIX="${{ secrets.REDIS_KEY_PREFIX }}"
+            export REDIS_SOCKET_TIMEOUT="${{ secrets.REDIS_SOCKET_TIMEOUT }}"
+            export REDIS_SOCKET_CONNECT_TIMEOUT="${{ secrets.REDIS_SOCKET_CONNECT_TIMEOUT }}"
+            export WEBSOCKET_HEARTBEAT_INTERVAL="${{ secrets.WEBSOCKET_HEARTBEAT_INTERVAL }}"
+            export WEBSOCKET_HEARTBEAT_TIMEOUT="${{ secrets.WEBSOCKET_HEARTBEAT_TIMEOUT }}"
+            export WEBSOCKET_MAX_RECONNECT_ATTEMPTS="${{ secrets.WEBSOCKET_MAX_RECONNECT_ATTEMPTS }}"
+            export CELERY_TASK_SERIALIZER="${{ secrets.CELERY_TASK_SERIALIZER }}"
+            export CELERY_RESULT_SERIALIZER="${{ secrets.CELERY_RESULT_SERIALIZER }}"
+            export CELERY_ACCEPT_CONTENT="${{ secrets.CELERY_ACCEPT_CONTENT }}"
+            export CELERY_TIMEZONE="${{ secrets.CELERY_TIMEZONE }}"
+            export CELERY_ENABLE_UTC="${{ secrets.CELERY_ENABLE_UTC }}"
+            export CELERY_TASK_ALWAYS_EAGER="${{ secrets.CELERY_TASK_ALWAYS_EAGER }}"
+            export CELERY_TASK_ACKS_LATE="${{ secrets.CELERY_TASK_ACKS_LATE }}"
+            export CELERY_TASK_REJECT_ON_WORKER_LOST="${{ secrets.CELERY_TASK_REJECT_ON_WORKER_LOST }}"
+            export CELERY_WORKER_PREFETCH_MULTIPLIER="${{ secrets.CELERY_WORKER_PREFETCH_MULTIPLIER }}"
+            export CELERY_TASK_DEFAULT_QUEUE="${{ secrets.CELERY_TASK_DEFAULT_QUEUE }}"
+            export CELERY_TASK_DEFAULT_EXCHANGE="${{ secrets.CELERY_TASK_DEFAULT_EXCHANGE }}"
+            export CELERY_TASK_DEFAULT_ROUTING_KEY="${{ secrets.CELERY_TASK_DEFAULT_ROUTING_KEY }}"
+            export CELERY_RESULT_EXPIRES="${{ secrets.CELERY_RESULT_EXPIRES }}"
+            export LOG_LEVEL="${{ secrets.LOG_LEVEL }}"
+            export LOG_FORMAT="${{ secrets.LOG_FORMAT }}"
+            export SENTRY_TRACES_SAMPLE_RATE="${{ secrets.SENTRY_TRACES_SAMPLE_RATE }}"
+            export EMAILS_FROM_EMAIL="${{secrets.EMAILS_FROM_EMAIL}}"
+            export EMAILS_FROM_NAME="${{secrets.EMAILS_FROM_NAME}}"
+            export SMTP_HOST="${{secrets.SMTP_HOST}}"
+            export SMTP_PORT="${{secrets.SMTP_PORT}}"
+            export SMTP_USER="${{secrets.SMTP_USER}}"
+            export SMTP_PASSWORD="${{secrets.SMTP_PASSWORD}}"
+            export BREVO_API_KEY="${{secrets.BREVO_API_KEY}}"
+            export BREVO_ENABLED="${{secrets.BREVO_ENABLED}}"
+            
             cd /opt/maigie/staging
             
             # Load Docker image
             docker load < /tmp/staging-image.tar.gz
             rm /tmp/staging-image.tar.gz
 
-            # Update .env from uploaded file
-            if [ -f /tmp/.env ]; then
-              mv /tmp/.env .env
-            fi
-            
-            # Ensure environment-specific variables are set correctly
-            # Use sed to update existing values or append if not present
-            if grep -q "^DATABASE_URL=" .env 2>/dev/null; then
-              sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}|" .env
+            # Generate .env from template using generator script
+            if [ -f ".env.example" ] && [ -f "scripts/generate-env-from-secrets.sh" ]; then
+              cp scripts/generate-env-from-secrets.sh ./generate-env-from-secrets.sh
+              chmod +x ./generate-env-from-secrets.sh
+              export ENVIRONMENT="staging"
+              export REDIS_URL="redis://redis:6379/0"
+              
+              echo "Running generate-env-from-secrets.sh with environment variables..."
+              ./generate-env-from-secrets.sh .env .env.example
+              
+              echo ""
+              echo "Final .env file contents:"
+              cat .env
+            elif [ -f ".env.example" ] && [ -f "generate-env-from-secrets.sh" ]; then
+              chmod +x ./generate-env-from-secrets.sh
+              export ENVIRONMENT="staging"
+              export REDIS_URL="redis://redis:6379/0"
+              
+              echo "Running generate-env-from-secrets.sh with environment variables..."
+              ./generate-env-from-secrets.sh .env .env.example
+              
+              echo ""
+              echo "Final .env file contents:"
+              cat .env
             else
-              echo "DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}" >> .env
-            fi
-            
-            if grep -q "^REDIS_URL=" .env 2>/dev/null; then
-              sed -i "s|^REDIS_URL=.*|REDIS_URL=redis://redis:6379/0|" .env
-            else
-              echo "REDIS_URL=redis://redis:6379/0" >> .env
-            fi
-            
-            if grep -q "^ENVIRONMENT=" .env 2>/dev/null; then
-              sed -i "s|^ENVIRONMENT=.*|ENVIRONMENT=staging|" .env
-            else
-              echo "ENVIRONMENT=staging" >> .env
+              echo "Warning: Generator script not found, using uploaded .env if available"
+              if [ -f /tmp/.env ]; then
+                mv /tmp/.env .env
+              fi
             fi
             
             # Tag the loaded image for docker-compose (if needed)
