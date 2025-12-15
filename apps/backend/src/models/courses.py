@@ -1,7 +1,7 @@
 """
 Course models (Pydantic schemas).
 
-Copyright (C) 2025 Maigie 
+Copyright (C) 2025 Maigie
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published
@@ -252,4 +252,3 @@ class CourseFilters(BaseModel):
     pageSize: int = Field(20, ge=1, le=100)
     sortBy: str = Field("createdAt", pattern="^(createdAt|updatedAt|title|progress)$")
     sortOrder: str = Field("desc", pattern="^(asc|desc)$")
-

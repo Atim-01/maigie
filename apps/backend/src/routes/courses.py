@@ -140,9 +140,7 @@ async def enrich_module_with_progress(
     Returns:
         Dictionary with enriched module data
     """
-    topics = await db.topic.find_many(
-        where={"moduleId": module.id}, order={"order": "asc"}
-    )
+    topics = await db.topic.find_many(where={"moduleId": module.id}, order={"order": "asc"})
 
     progress, total, completed = await calculate_topic_list_progress(topics)
     is_completed = completed == total if total > 0 else True
@@ -190,9 +188,7 @@ async def check_course_ownership(db: PrismaClient, course_id: str, user_id: str)
     return course
 
 
-async def check_module_ownership(
-    db: PrismaClient, module_id: str, user_id: str
-) -> tuple[Any, Any]:
+async def check_module_ownership(db: PrismaClient, module_id: str, user_id: str) -> tuple[Any, Any]:
     """
     Check if module exists and belongs to user (via course).
 
@@ -274,7 +270,7 @@ async def list_courses(
     Supports filtering, searching, sorting, and pagination.
     """
     user_id = current_user.id
-    
+
     # Build where clause
     where: dict[str, Any] = {"userId": user_id}
 
@@ -311,9 +307,7 @@ async def list_courses(
     # Enrich courses with progress data
     course_items = []
     for course in courses:
-        progress, total_topics, completed_topics = await calculate_course_progress(
-            db, course.id
-        )
+        progress, total_topics, completed_topics = await calculate_course_progress(db, course.id)
 
         course_items.append(
             CourseListItem(
@@ -359,7 +353,7 @@ async def create_course(
     All users have unlimited manual courses.
     """
     user_id = current_user.id
-    
+
     # Check subscription tier limits for AI-generated courses
     if course_data.isAIGenerated:
         # Check if user is on FREE tier
@@ -416,7 +410,7 @@ async def get_course(
     Get detailed course information with all modules and topics.
     """
     user_id = current_user.id
-    
+
     # Check ownership
     course = await check_course_ownership(db, course_id, user_id)
 
@@ -434,9 +428,7 @@ async def get_course(
         enriched_modules.append(ModuleResponse(**enriched))
 
     # Calculate overall course progress
-    progress, total_topics, completed_topics = await calculate_course_progress(
-        db, course_id
-    )
+    progress, total_topics, completed_topics = await calculate_course_progress(db, course_id)
 
     return CourseResponse(
         id=course.id,
@@ -469,7 +461,7 @@ async def update_course(
     Only title, description, difficulty, targetDate, and archived status can be updated.
     """
     user_id = current_user.id
-    
+
     # Check ownership
     await check_course_ownership(db, course_id, user_id)
 
@@ -505,7 +497,7 @@ async def delete_course(
     Cascading delete will remove all associated modules and topics.
     """
     user_id = current_user.id
-    
+
     # Check ownership
     await check_course_ownership(db, course_id, user_id)
 
@@ -525,7 +517,7 @@ async def archive_course(
     Archive a course (soft delete).
     """
     user_id = current_user.id
-    
+
     # Check ownership
     await check_course_ownership(db, course_id, user_id)
 
@@ -541,7 +533,9 @@ async def archive_course(
 # ============================================================================
 
 
-@router.post("/{course_id}/modules", response_model=ModuleResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{course_id}/modules", response_model=ModuleResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_module(
     course_id: str,
     module_data: ModuleCreate,
@@ -552,7 +546,7 @@ async def create_module(
     Add a new module to a course.
     """
     user_id = current_user.id
-    
+
     # Check ownership
     await check_course_ownership(db, course_id, user_id)
 
@@ -583,7 +577,7 @@ async def update_module(
     Update a module's metadata.
     """
     user_id = current_user.id
-    
+
     # Check ownership
     module, course = await check_module_ownership(db, module_id, user_id)
 
@@ -619,7 +613,7 @@ async def delete_module(
     Delete a module and all its topics (cascading delete).
     """
     user_id = current_user.id
-    
+
     # Check ownership
     module, course = await check_module_ownership(db, module_id, user_id)
 
@@ -654,7 +648,7 @@ async def create_topic(
     Add a new topic to a module.
     """
     user_id = current_user.id
-    
+
     # Check ownership
     module, course = await check_module_ownership(db, module_id, user_id)
 
@@ -692,7 +686,7 @@ async def update_topic(
     Update a topic's data.
     """
     user_id = current_user.id
-    
+
     # Check ownership
     topic, module, course = await check_topic_ownership(db, topic_id, user_id)
 
@@ -734,7 +728,7 @@ async def delete_topic(
     Delete a topic permanently.
     """
     user_id = current_user.id
-    
+
     # Check ownership
     topic, module, course = await check_topic_ownership(db, topic_id, user_id)
 
@@ -764,7 +758,7 @@ async def toggle_topic_completion(
     Mark a topic as completed or incomplete.
     """
     user_id = current_user.id
-    
+
     # Check ownership
     topic, module, course = await check_topic_ownership(db, topic_id, user_id)
 
@@ -773,9 +767,7 @@ async def toggle_topic_completion(
         raise ValidationError("Topic does not belong to the specified module/course")
 
     # Update completion status
-    updated_topic = await db.topic.update(
-        where={"id": topic_id}, data={"completed": completed}
-    )
+    updated_topic = await db.topic.update(where={"id": topic_id}, data={"completed": completed})
 
     return TopicResponse(**updated_topic.model_dump())
 
@@ -798,7 +790,7 @@ async def get_course_progress(
     and estimated hours tracking.
     """
     user_id = current_user.id
-    
+
     # Check ownership
     await check_course_ownership(db, course_id, user_id)
 
