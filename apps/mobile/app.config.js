@@ -50,6 +50,7 @@ module.exports = {
     },
     plugins: [
       'expo-router',
+      'expo-system-ui',
       [
         'expo-splash-screen',
         {
